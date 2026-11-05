@@ -1,0 +1,11 @@
+{
+  "name": "weightmaxer-tests",
+  "private": true,
+  "description": "Browser tests for the Weightmaxer interface (web/).",
+  "scripts": {
+    "test": "node browser/ui.test.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

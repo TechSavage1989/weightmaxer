@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weightmaxer</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" class="bm-bg"/><path d="M14 40a18 18 0 0 1 36 0" class="bm-arc"/><path d="M32 40 41 25" class="bm-needle"/><circle cx="32" cy="40" r="4" class="bm-hub"/></svg>
+    <span class="brand-name">Weightmaxer</span>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-plan" aria-selected="true" data-view="plan">Plan</button>
+    <button role="tab" id="tab-log" aria-selected="false" data-view="log">Weigh-ins</button>
+    <button role="tab" id="tab-settings" aria-selected="false" data-view="settings">Settings</button>
+  </nav>
+</header>
+
+<section id="update-banner" class="banner" hidden aria-live="polite"></section>
+
+<main>
+  <!-- PLAN -->
+  <section id="view-plan" class="view">
+    <div class="grid">
+      <form class="card" id="form" autocomplete="off">
+        <div class="card-head">
+          <h2>About you</h2>
+          <div class="seg" role="group" aria-label="Units">
+            <button type="button" id="u-imp" aria-pressed="true">lb / ft</button>
+            <button type="button" id="u-met" aria-pressed="false">kg / cm</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="sex">Sex</label>
+            <select id="sex"><option value="f">Female</option><option value="m">Male</option></select>
+          </div>
+          <div class="field">
+            <label for="age">Age</label>
+            <div class="inp"><input id="age" type="number" inputmode="numeric" min="15" max="100" value="38"><span class="u">yrs</span></div>
+          </div>
+        </div>
+        <div class="field" id="h-imp">
+          <span class="lbl">Height</span>
+          <div class="row">
+            <div class="inp"><input id="hft" type="number" min="3" max="8" value="5" aria-label="Height feet"><span class="u">ft</span></div>
+            <div class="inp"><input id="hin" type="number" min="0" max="11.9" step="0.5" value="6" aria-label="Height inches"><span class="u">in</span></div>
+          </div>
+        </div>
+        <div class="field" id="h-met" hidden>
+          <label for="hcm">Height</label>
+          <div class="inp"><input id="hcm" type="number" min="100" max="250" value="168"><span class="u">cm</span></div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="w">Starting weight</label>
+            <div class="inp"><input id="w" type="number" step="0.1" value="196"><span class="u wu">lb</span></div>
+          </div>
+          <div class="field">
+            <label for="g">Goal weight</label>
+            <div class="inp"><input id="g" type="number" step="0.1" value="165"><span class="u wu">lb</span></div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="act">Activity level</label>
+          <select id="act">
+            <option value="1.2">Sedentary (desk job, little exercise)</option>
+            <option value="1.375" selected>Lightly active (exercise 1–3 days/week)</option>
+            <option value="1.55">Moderately active (3–5 days/week)</option>
+            <option value="1.725">Very active (6–7 days/week)</option>
+            <option value="1.9">Extremely active (physical job + training)</option>
+          </select>
+        </div>
+        <div class="field" id="floor-f">
+          <label for="floor">Lowest daily calories</label>
+          <div class="inp"><input id="floor" type="number" inputmode="numeric" min="800" max="4000" step="50" placeholder="1200"><span class="u">kcal</span></div>
+          <p class="hint" id="floor-hint">Leave empty to use the standard minimum.</p>
+        </div>
+        <div class="field">
+          <label for="start">Plan starts</label>
+          <input id="start" type="date">
+        </div>
+        <hr class="divider">
+        <div class="card-head">
+          <h2>Plan by</h2>
+          <div class="seg" role="group" aria-label="Plan by">
+            <button type="button" id="m-pace" aria-pressed="true">Pace</button>
+            <button type="button" id="m-date" aria-pressed="false">Target date</button>
+          </div>
+        </div>
+        <div class="field" id="pace-f">
+          <label for="rate"><span id="rate-verb">Weekly loss</span>: <span class="rate-out" id="rate-out"></span></label>
+          <input id="rate" type="range" min="0.25" max="2" step="0.25" value="1">
+          <p class="hint" id="rate-hint">0.5–1% of body weight per week is the usual safe range.</p>
+        </div>
+        <div class="field" id="date-f" hidden>
+          <label for="date">Reach my goal by</label>
+          <input id="date" type="date">
+        </div>
+      </form>
+
+      <section class="results" aria-live="polite">
+        <div class="card">
+          <div class="headline">
+            <div class="big" id="head"></div>
+            <div class="sub" id="subhead"></div>
+          </div>
+          <div class="stats" id="stats"></div>
+          <div class="alerts" id="alerts"></div>
+        </div>
+        <div class="card">
+          <h2>Weight over time</h2>
+          <svg id="chart" class="chart" role="img" aria-label="Projected weight by week"></svg>
+        </div>
+        <div class="card">
+          <h2>Body mass index</h2>
+          <div class="bmi-scale">
+            <div class="bmi-marks" id="bmi-marks"></div>
+            <div class="bmi-bar" id="bmi-bar"></div>
+            <div class="bmi-legend"><span>Underweight &lt;18.5</span><span>Healthy 18.5–24.9</span><span>Overweight 25–29.9</span><span>Obese 30+</span></div>
+          </div>
+        </div>
+        <div class="card" id="macro-card">
+          <div class="card-head">
+            <h2>Daily macros</h2>
+            <select id="macro" aria-label="Diet style">
+              <option value="balanced" selected>Balanced</option>
+              <option value="lowcarb">Lower carb</option>
+              <option value="lowfat">Lower fat</option>
+            </select>
+          </div>
+          <p class="hint" id="macro-sub"></p>
+          <div class="macro-bar" id="macro-bar" aria-hidden="true"></div>
+          <div class="macros" id="macros"></div>
+          <p class="hint" id="macro-note"></p>
+        </div>
+        <div class="card">
+          <h2>Calorie schedule</h2>
+          <p class="hint" id="schedule-hint">Your body burns less as you get lighter, so the daily target drops over time. Recheck it every few weeks.</p>
+          <div class="table-wrap"><table id="table"></table></div>
+        </div>
+        <p class="note"><strong>How this works.</strong> Calories burned at rest come from the Mifflin–St Jeor equation, multiplied by your activity level. A pound of body fat is treated as about 3,500 kcal (7,700 kcal per kg). Daily intake never goes below the lowest daily calories you set (1,200 kcal for women or 1,500 kcal for men unless you change it, and never below 800); if the plan would need less, the timeline is stretched instead. Eating less than the standard minimum is best done with a doctor's supervision. Real results vary with water weight, muscle, sleep and how accurately food is tracked. This is an estimate, not medical advice. Talk to a doctor before a large or fast weight change. Macro targets use common sports-nutrition ranges: protein of 1.6–2.2 g per kg, fat of at least 0.6 g per kg, and fibre of 14 g per 1,000 kcal.</p>
+      </section>
+    </div>
+  </section>
+
+  <!-- WEIGH-INS -->
+  <section id="view-log" class="view" hidden>
+    <div class="grid">
+      <form class="card" id="log-form" autocomplete="off">
+        <h2>Add a weigh-in</h2>
+        <div class="field">
+          <label for="log-date">Date</label>
+          <input id="log-date" type="date">
+        </div>
+        <div class="field">
+          <label for="log-w">Weight</label>
+          <div class="inp"><input id="log-w" type="number" step="0.1" placeholder="e.g. 192.4"><span class="u wu">lb</span></div>
+        </div>
+        <button type="submit" class="btn primary" id="log-add">Add weigh-in</button>
+        <p class="hint" id="log-msg" role="status"></p>
+        <p class="hint">Weigh yourself at the same time of day, ideally in the morning. Day-to-day changes of a pound or two are mostly water.</p>
+      </form>
+      <section class="results">
+        <div class="card">
+          <div class="headline">
+            <div class="big" id="log-head"></div>
+            <div class="sub" id="log-sub"></div>
+          </div>
+          <svg id="log-chart" class="chart" role="img" aria-label="Weigh-ins compared with the plan"></svg>
+          <div class="legend"><span class="key plan"></span>Plan <span class="key actual"></span>Your weigh-ins</div>
+        </div>
+        <div class="card">
+          <h2>History</h2>
+          <div id="log-list"></div>
+          <button type="button" class="btn" id="log-more" hidden>Show all</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="view-settings" class="view" hidden>
+    <div class="stack">
+      <div class="card">
+        <h2>Updates</h2>
+        <div class="kv"><span>Installed version</span><span id="set-version" class="mono"></span></div>
+        <div class="kv"><span>Status</span><span id="set-status"></span></div>
+        <div class="actions">
+          <button type="button" class="btn" id="check-now">Check now</button>
+          <span class="hint" id="check-msg" role="status"></span>
+        </div>
+        <p class="hint">Weightmaxer checks for a new version when it starts, every five minutes while its window is open, and when you come back to it. It never downloads or installs anything until you choose to.</p>
+      </div>
+      <div class="card">
+        <h2>Your data</h2>
+        <p class="hint">Your plan and weigh-ins are saved automatically on this computer. Updating Weightmaxer keeps them.</p>
+        <div class="kv"><span>Saved in</span><span id="set-folder" class="mono wrap"></span></div>
+        <div class="actions"><button type="button" class="btn" id="open-folder">Open folder</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

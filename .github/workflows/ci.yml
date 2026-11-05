@@ -1,0 +1,140 @@
+name: Build, test and release
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: Checks and release build (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Formatting
+        run: test -z "$(gofmt -l . | tee /dev/stderr)"
+      - name: Vet (Linux, Windows, Windows update-test build)
+        run: |
+          go vet ./...
+          GOOS=windows go vet ./...
+          GOOS=windows go vet -tags updatetest ./...
+      - name: Go tests
+        run: go test ./...
+      - name: Repository checks
+        run: |
+          python3 -m unittest discover -s scripts -p "test_*.py" -v
+          python3 scripts/check_public_source.py
+      - name: Build release package
+        run: python3 scripts/build.py
+      - name: Build is reproducible
+        run: |
+          python3 scripts/build.py --out build/repro
+          cmp dist/Weightmaxer-win-x64.zip build/repro/Weightmaxer-win-x64.zip
+      - name: Browser tests
+        run: |
+          npm ci --prefix tests --ignore-scripts
+          if command -v google-chrome >/dev/null; then
+            echo "Using the runner's Chrome: $(google-chrome --version)"
+            export CI_CHROME_PATH="$(command -v google-chrome)"
+          else
+            npx --prefix tests playwright install --with-deps chromium
+          fi
+          npm test --prefix tests
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-release
+          path: |
+            dist/Weightmaxer-win-x64.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  windows:
+    name: Windows app and update tests
+    needs: checks
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: windows-release
+          path: dist
+      - name: Unit tests on Windows
+        run: go test ./internal/... ./web/
+      - name: Release build opens its window (WebView2)
+        shell: pwsh
+        run: |
+          Expand-Archive dist/Weightmaxer-win-x64.zip -DestinationPath "$env:RUNNER_TEMP\app"
+          $report = "$env:RUNNER_TEMP\selftest.json"
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP\app\Weightmaxer.exe" -ArgumentList "--self-test=$report" -PassThru
+          $ok = $p.WaitForExit(120000)
+          Get-Content "$env:LOCALAPPDATA\Weightmaxer\logs\weightmaxer.log" -ErrorAction SilentlyContinue
+          if (-not $ok) { Stop-Process $p -Force; throw "Weightmaxer did not finish its self-test" }
+          $h = Get-Content $report -Raw | ConvertFrom-Json
+          $want = (Get-Content VERSION -Raw).Trim()
+          if ($h.version -ne $want -or -not $h.visible) { throw "self-test report: $(Get-Content $report -Raw)" }
+          Write-Host "Weightmaxer $($h.version) opened a visible window"
+          if (Test-Path "$env:RUNNER_TEMP\app\*.new") { throw "files left beside the executable" }
+      - name: End-to-end update (old version to new, tampered download, rollback)
+        run: go test ./tests/e2e -v -count=1 -timeout 25m
+
+  publish:
+    name: Publish release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: windows-release
+          path: dist
+      - name: Create the release once per version (never replaced)
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(tr -d '\r\n' < VERSION)
+          tag="v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Version $version is already released; its assets are left unchanged."
+            exit 0
+          fi
+          test -s "docs/releases/$version.md"
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Weightmaxer $version" --notes-file "docs/releases/$version.md" --draft \
+            dist/Weightmaxer-win-x64.zip dist/SHA256SUMS.txt
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+      - name: Verify the published downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${{ steps.release.outputs.version }}"
+          mkdir published
+          gh release download "v$version" --repo "$GITHUB_REPOSITORY" --dir published
+          (cd published && sha256sum -c SHA256SUMS.txt)
+          go run ./cmd/wmxtool feedcheck --expect "$version"

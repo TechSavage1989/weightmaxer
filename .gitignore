@@ -1,0 +1,12 @@
+# Build output
+/dist/
+/build/
+/cmd/weightmaxer/*.syso
+# Tools and test output
+node_modules/
+/test-results/
+*.log
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
