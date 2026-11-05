@@ -175,6 +175,55 @@ const base = { current: "1.0.0", latest: "1.1.0", dev: false, check: { kind: "av
     }
   });
 
+  await test("phone width: nothing cut off, tabs on one line, BMI labels apart", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(process.env.WMX_SITE_URL || PAGE);
+    await page.waitForFunction(() => document.getElementById("head").textContent.length > 0);
+    // Start and goal BMI close together, as in the reported screenshot.
+    await page.selectOption("#sex", "m");
+    await set(page, "#hft", 6); await set(page, "#hin", 0); await set(page, "#w", 176); await set(page, "#g", 169);
+    await set(page, "#floor", 800);
+    await page.click("#m-date");
+    for (const tab of ["plan", "log", "settings"]) {
+      await page.click("#tab-" + tab);
+      const problems = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        const out = [];
+        if (document.documentElement.scrollWidth > vw) out.push(`page is ${document.documentElement.scrollWidth}px wide in a ${vw}px screen`);
+        for (const el of document.querySelectorAll(".topbar *, .view:not([hidden]) .card, .view:not([hidden]) input, .view:not([hidden]) select, .view:not([hidden]) .btn")) {
+          const r = el.getBoundingClientRect();
+          if (r.width && (r.right > vw + 0.5 || r.left < -0.5)) out.push(`${el.id || el.className || el.tagName} spans ${Math.round(r.left)}–${Math.round(r.right)}`);
+        }
+        for (const b of document.querySelectorAll(".tabs button")) {
+          if (b.getBoundingClientRect().height > 44) out.push(`tab "${b.textContent}" wraps`);
+        }
+        // Inputs stay inside their card.
+        for (const inp of document.querySelectorAll(".view:not([hidden]) .card input, .view:not([hidden]) .card select")) {
+          const card = inp.closest(".card").getBoundingClientRect(), r = inp.getBoundingClientRect();
+          if (r.width && r.right > card.right - 1) out.push(`${inp.id} sticks out of its card`);
+        }
+        for (const w of document.querySelectorAll(".view:not([hidden]) .table-wrap")) {
+          if (w.scrollWidth > w.clientWidth + 1) out.push(`table needs side-scrolling (${w.scrollWidth}px in ${w.clientWidth}px)`);
+        }
+        const marks = [...document.querySelectorAll(".bmi-mark .lab")].map((m) => m.getBoundingClientRect());
+        if (marks.length === 2 && !document.getElementById("view-plan").hidden) {
+          const [a, b] = marks;
+          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) out.push("BMI labels overlap");
+        }
+        return out;
+      });
+      assert.deepStrictEqual(problems, [], tab + ": " + problems.join("; "));
+    }
+    // Text inputs are at least 16px so iPhone Safari doesn't zoom in on focus.
+    const small = await page.evaluate(() => [...document.querySelectorAll("input:not([type=range]):not([type=file]), select")].filter((e) => parseFloat(getComputedStyle(e).fontSize) < 16).map((e) => e.id));
+    assert.deepStrictEqual(small, [], "inputs under 16px: " + small.join(", "));
+    assert.deepStrictEqual(errors, []);
+    await ctx.close();
+  });
+
   await test("web version: saves in the browser, hides updates, exports and imports", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
     const page = await ctx.newPage();

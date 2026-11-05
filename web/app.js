@@ -150,7 +150,7 @@
   function clearPlan(head, sub) {
     $("head").textContent = head;
     $("subhead").textContent = sub || "";
-    ["stats", "alerts", "table"].forEach((i) => ($(i).innerHTML = ""));
+    ["stats", "alerts", "table", "schedule-goal"].forEach((i) => ($(i).innerHTML = ""));
     $("chart").innerHTML = "";
     lastSim = null;
     $("macro-card").hidden = true;
@@ -273,12 +273,15 @@
     const rows = w.filter((r, i) => i % step === 0 && !r.end);
     const last = w[w.length - 1];
     const s = startDate();
-    let h = `<thead><tr><th>Week</th><th>Date</th><th class="n">Weight</th><th class="n">Eat</th><th class="n">Burn</th></tr></thead><tbody>`;
+    // The Burn column is hidden on phones (.burn) so Eat always fits on screen.
+    let h = `<thead><tr><th>Week</th><th>Date</th><th class="n">Weight</th><th class="n">Eat<span class="unit-head"> kcal</span></th><th class="n burn">Burn</th></tr></thead><tbody>`;
     rows.forEach((r) => {
-      h += `<tr><td>${r.week}</td><td>${fmtDate(addDays(s, r.week * 7))}</td><td class="n">${fmtW(r.kg)}</td><td class="n">${fmtN(r.intake)} kcal</td><td class="n">${fmtN(r.tdee)} kcal</td></tr>`;
+      h += `<tr><td>${r.week}</td><td>${fmtDate(addDays(s, r.week * 7))}</td><td class="n">${fmtW(r.kg)}</td><td class="n">${fmtN(r.intake)}<span class="unit"> kcal</span></td><td class="n burn">${fmtN(r.tdee)} kcal</td></tr>`;
     });
-    h += `<tr><td>${last.week.toFixed(1)}</td><td>${fmtDate(addDays(s, Math.round(last.week * 7)))}</td><td class="n">${fmtW(last.kg)}</td><td class="n" colspan="2">Goal reached · maintain at ${fmtN(last.tdee)} kcal</td></tr>`;
+    const goalDay = addDays(s, Math.round(last.week * 7));
+    h += `<tr class="goal-row"><td>${last.week.toFixed(1)}</td><td>${fmtDate(goalDay)}</td><td class="n">${fmtW(last.kg)}</td><td class="n">${fmtN(last.tdee)}<span class="unit"> kcal</span></td><td class="n burn">${fmtN(last.tdee)} kcal</td></tr>`;
     $("table").innerHTML = h + "</tbody>";
+    $("schedule-goal").textContent = `Goal reached ${fmtDate(goalDay)}. From then on, eat about ${fmtN(last.tdee)} kcal a day to stay at ${fmtW(last.kg)}.`;
   }
 
   function niceStep(raw) {
@@ -330,9 +333,21 @@
     const pos = (b) => Math.min(100, Math.max(0, ((b - min) / (max - min)) * 100));
     const bands = [[15, 18.5, "var(--warn)"], [18.5, 25, "var(--good)"], [25, 30, "var(--warn)"], [30, 40, "var(--bad)"]];
     $("bmi-bar").innerHTML = bands.map(([a, b, c]) => `<span style="width:${pos(b) - pos(a)}%;background:${c}"></span>`).join("");
-    $("bmi-marks").innerHTML =
-      `<div class="bmi-mark" style="left:${pos(now)}%">Start ${now.toFixed(1)}</div>` +
-      `<div class="bmi-mark" style="left:${pos(goal)}%;color:var(--accent)">Goal ${goal.toFixed(1)}</div>`;
+    // Labels sit centred under their tick, but turn outwards when the two are
+    // close together or near an edge, so they never overlap or get cut off.
+    const width = $("bmi-marks").clientWidth || 600;
+    const marks = [{ b: now, text: `Start ${now.toFixed(1)}`, color: "" }, { b: goal, text: `Goal ${goal.toFixed(1)}`, color: "color:var(--accent);" }];
+    const close = (Math.abs(pos(now) - pos(goal)) / 100) * width < 96;
+    const [lo, hi] = now <= goal ? marks : [marks[1], marks[0]];
+    lo.align = close ? "end" : "center";
+    hi.align = close ? "start" : "center";
+    for (const m of marks) {
+      const px = (pos(m.b) / 100) * width;
+      if (px < 48) m.align = "start";
+      else if (width - px < 48) m.align = "end";
+    }
+    $("bmi-marks").innerHTML = marks.map((m) =>
+      `<div class="bmi-mark" style="${m.color}left:${pos(m.b)}%"><span class="tick"></span><span class="lab" data-align="${m.align}">${m.text}</span></div>`).join("");
   }
 
   // ---------- weigh-ins ----------
