@@ -51,7 +51,6 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   the engine WebView2 uses, not from a screenshot of the Windows window.
 - No manual testing on a Windows 10 or 11 desktop has been done yet. Windows checks run
   on GitHub's hosted Windows Server runner.
-
 - Web version data lives only in one browser's storage for `techsavage1989.github.io`;
   users must export to back it up or move it. Private windows lose it on close.
 
