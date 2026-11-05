@@ -78,7 +78,16 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 - Approvals given for this task only: source upload and public publication to
   `TechSavage1989/weightmaxer`, pull request creation, merge into `main` after checks,
   and the `v1.0.0` tag and release with its assets. They don't authorize later work.
-- Results are recorded in the pull request and the release.
+- Results: merged as TechSavage1989/weightmaxer#1 (merge commit `49b0fe3`) after all checks passed.
+  Release `v1.0.0` was published by CI from that commit:
+  `Weightmaxer-win-x64.zip` SHA-256 `3fb99d6026437352c2361b973e8cdd33c6eff39249fee3fd2c7898ccfcf1c893`.
+  The published zip was downloaded and checked against `SHA256SUMS.txt`, matched a
+  local rebuild of `main` byte for byte, and passed `wmxtool feedcheck` (live API check,
+  download, verification, cached repeat check).
+- Windows CI on GitHub's hosted runner passed the release exe self-test (visible WebView2
+  window), the 0.9.0 → 0.9.1 end-to-end update with relaunch, cleanup, one backup and
+  preserved data, the tampered-checksum rejection and the rollback. The update from a
+  published release to a newer published release will first happen with 1.0.1.
 
 ### 2026-11-05: website on GitHub Pages
 
