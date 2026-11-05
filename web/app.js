@@ -10,6 +10,15 @@
     call(n, ...a) { return this.has(n) ? Promise.resolve(window[n](...a)) : Promise.resolve(null); },
   };
 
+  // The Windows app provides wmxLoad; anywhere else (GitHub Pages, a local
+  // file) this is the web version, which saves to the browser's storage.
+  const desktop = host.has("wmxLoad");
+  const STORE_KEY = "weightmaxer-data";
+  const browserStore = {
+    load() { try { return localStorage.getItem(STORE_KEY); } catch (e) { return null; } },
+    save(doc) { try { localStorage.setItem(STORE_KEY, doc); return true; } catch (e) { return false; } },
+  };
+
   // ---------- state ----------
   const FIELDS = ["sex", "age", "hft", "hin", "hcm", "w", "g", "act", "floor", "rate", "date", "start", "macro"];
   const MIN_FLOOR = 800, MAX_FLOOR = 4000;
@@ -57,12 +66,20 @@
   function saveNow() {
     clearTimeout(saveTimer);
     collect();
-    return host.call("wmxSave", JSON.stringify(data)).catch((e) => console.error("save failed", e));
+    const doc = JSON.stringify(data);
+    if (!desktop) {
+      if (!browserStore.save(doc)) console.error("save failed: browser storage is unavailable");
+      return Promise.resolve();
+    }
+    return host.call("wmxSave", doc).catch((e) => console.error("save failed", e));
   }
   async function load() {
     let doc = null;
-    try { doc = JSON.parse((await host.call("wmxLoad")) || "null"); } catch (e) { doc = null; }
-    if (doc && typeof doc === "object") {
+    try { doc = JSON.parse((desktop ? await host.call("wmxLoad") : browserStore.load()) || "null"); } catch (e) { doc = null; }
+    applyDoc(doc);
+  }
+  function applyDoc(doc) {
+    if (doc && typeof doc === "object" && !Array.isArray(doc)) {
       if (doc.units === "met" || doc.units === "imp") setUnits(doc.units, false);
       if (doc.mode === "date" || doc.mode === "pace") setMode(doc.mode);
       if (doc.profile) FIELDS.forEach((f) => { if (doc.profile[f] != null && doc.profile[f] !== "") $(f).value = doc.profile[f]; });
@@ -378,6 +395,38 @@
     return $("log-w").value.trim() !== "" ? "You started a weigh-in that isn't added yet. Add it or clear it first." : "";
   }
 
+  // ---------- export / import (web version) ----------
+  function exportData() {
+    collect();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `weightmaxer-data-${iso(today())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    $("data-msg").textContent = "Exported.";
+  }
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let doc = null;
+      try { doc = JSON.parse(reader.result); } catch (e) { doc = null; }
+      if (!doc || typeof doc !== "object" || Array.isArray(doc) || !(doc.profile || doc.log)) {
+        $("data-msg").textContent = "That file isn't a Weightmaxer export.";
+        return;
+      }
+      data.log = [];
+      applyDoc(doc);
+      saveNow();
+      render();
+      $("data-msg").textContent = `Imported ${data.log.length} weigh-in${data.log.length === 1 ? "" : "s"}.`;
+    };
+    reader.onerror = () => ($("data-msg").textContent = "Couldn't read that file.");
+    reader.readAsText(file);
+  }
+
   // ---------- update banner and settings ----------
   function ago(iso) {
     if (!iso) return "";
@@ -518,7 +567,15 @@
     window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 120); });
     setInterval(() => update && renderUpdate(), 30000); // keep "checked N min ago" current
 
-    const info = (await host.call("wmxInfo")) || { version: "browser preview", dataFolder: "(not saved)" };
+    if (!desktop) {
+      document.querySelectorAll(".desktop-only").forEach((e) => (e.hidden = true));
+      document.querySelectorAll(".web-only").forEach((e) => (e.hidden = false));
+      $("export-data").onclick = exportData;
+      $("import-file").onchange = (e) => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ""; };
+      // Save the starting form so a first visit is remembered too.
+      if (!browserStore.load()) saveNow();
+    }
+    const info = (await host.call("wmxInfo")) || { version: "web", dataFolder: "This browser, on this device only" };
     $("set-version").textContent = info.version;
     $("set-folder").textContent = info.dataFolder;
     let saved = "plan";

@@ -51,6 +51,18 @@ jobs:
             npx --prefix tests playwright install --with-deps chromium
           fi
           npm test --prefix tests
+      - name: Build the website and test it as served by a web server
+        run: |
+          python3 scripts/build_site.py
+          python3 -m http.server 8765 --directory site >/dev/null 2>&1 &
+          sleep 1
+          if command -v google-chrome >/dev/null; then export CI_CHROME_PATH="$(command -v google-chrome)"; fi
+          WMX_SITE_URL=http://127.0.0.1:8765/ npm test --prefix tests
+      - name: Keep the website for deployment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: windows-release
@@ -91,6 +103,25 @@ jobs:
           if (Test-Path "$env:RUNNER_TEMP\app\*.new") { throw "files left beside the executable" }
       - name: End-to-end update (old version to new, tampered download, rollback)
         run: go test ./tests/e2e -v -count=1 -timeout 25m
+
+  pages:
+    name: Deploy website to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - id: deploy
+        uses: actions/deploy-pages@v4
 
   publish:
     name: Publish release

@@ -173,3 +173,5 @@ tr:last-child td { border-bottom: 0; }
 .m-fat { background: var(--warn); }
 .m-carbs { background: var(--good); }
 #macro { width: auto; min-width: 150px; }
+a.btn { text-decoration: none; display: inline-block; }
+label.btn { display: inline-block; }

@@ -16,7 +16,7 @@ ALLOWED = {
     'cmd', 'internal', 'web', 'assets', 'docs', 'scripts', 'tests',
 }
 # Local outputs that are git-ignored; skipped only when no Git index exists.
-GENERATED = {'.git', 'build', 'dist', 'node_modules', 'test-results'}
+GENERATED = {'.git', 'build', 'dist', 'site', 'node_modules', 'test-results'}
 
 
 def root_entries(root):
