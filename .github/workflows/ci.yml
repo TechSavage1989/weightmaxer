@@ -44,7 +44,12 @@ jobs:
       - name: Browser tests
         run: |
           npm ci --prefix tests --ignore-scripts
-          npx --prefix tests playwright install --with-deps chromium
+          if command -v google-chrome >/dev/null; then
+            echo "Using the runner's Chrome: $(google-chrome --version)"
+            export CI_CHROME_PATH="$(command -v google-chrome)"
+          else
+            npx --prefix tests playwright install --with-deps chromium
+          fi
           npm test --prefix tests
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

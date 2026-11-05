@@ -6,6 +6,6 @@
     "test": "node browser/ui.test.cjs"
   },
   "devDependencies": {
-    "playwright": "1.56.1"
+    "playwright": "1.63.0"
   }
 }
