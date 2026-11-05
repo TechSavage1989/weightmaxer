@@ -93,6 +93,21 @@ const base = { current: "1.0.0", latest: "1.1.0", dev: false, check: { kind: "av
     assert.strictEqual(await page.locator(".log-row").count(), 1);
   }));
 
+  await test("weigh-in chart shows the plan when Weigh-ins was the last tab", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    await page.addInitScript(() => {
+      try { localStorage.setItem("wmx-view", "log"); } catch (e) {}
+      window.wmxLoad = () => "{}"; window.wmxSave = () => {}; window.wmxReady = () => {};
+    });
+    await page.goto(PAGE);
+    await page.waitForFunction(() => document.getElementById("log-chart").innerHTML.length > 0);
+    assert.ok(await page.isVisible("#view-log"));
+    assert.ok((await page.locator("#log-chart path").count()) >= 2, "plan line drawn");
+    assert.match(await page.textContent("#head"), /^Lose /);
+    await ctx.close();
+  });
+
   await test("update banner: versions, notes, Read more only when there is more", () => withPage(browser, {}, async (page) => {
     await update(page, { ...base, phase: "available" });
     const text = await page.textContent("#update-banner");

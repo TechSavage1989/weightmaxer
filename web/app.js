@@ -523,6 +523,7 @@
     $("set-folder").textContent = info.dataFolder;
     let saved = "plan";
     try { saved = localStorage.getItem("wmx-view") || "plan"; } catch (e) {}
+    renderPlan(); // the weigh-in chart needs the plan even when another tab opens first
     show(["plan", "log", "settings"].includes(saved) ? saved : "plan");
     window.wmxUnsavedWork = unsavedWork;
     host.call("wmxReady");
