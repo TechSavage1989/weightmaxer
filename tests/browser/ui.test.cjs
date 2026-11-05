@@ -175,6 +175,42 @@ const base = { current: "1.0.0", latest: "1.1.0", dev: false, check: { kind: "av
     }
   });
 
+  await test("web version: saves in the browser, hides updates, exports and imports", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const site = process.env.WMX_SITE_URL || PAGE;
+    await page.goto(site);
+    await page.waitForFunction(() => document.getElementById("head").textContent.length > 0);
+    await set(page, "#w", 200);
+    await page.click("#tab-log"); await page.fill("#log-date", "2026-11-03"); await page.fill("#log-w", "199"); await page.click("#log-add");
+    await page.waitForTimeout(500);
+    await page.reload();
+    await page.waitForFunction(() => document.getElementById("head").textContent.length > 0);
+    assert.strictEqual(await page.inputValue("#w"), "200", "form survives a reload");
+    await page.click("#tab-log");
+    assert.strictEqual(await page.locator(".log-row").count(), 1, "weigh-in survives a reload");
+    await page.click("#tab-settings");
+    assert.ok(await page.isHidden("#check-now"), "update controls hidden on the web");
+    assert.ok(await page.isHidden("#open-folder"));
+    assert.ok(await page.isVisible("#export-data"));
+    assert.ok(await page.isHidden("#update-banner"));
+    const [dl] = await Promise.all([page.waitForEvent("download"), page.click("#export-data")]);
+    assert.match(dl.suggestedFilename(), /^weightmaxer-data-\d{4}-\d\d-\d\d\.json$/);
+    const exported = JSON.parse(require("fs").readFileSync(await dl.path(), "utf8"));
+    assert.strictEqual(exported.log.length, 1);
+    exported.log.push({ d: "2026-11-10", kg: 89 });
+    await page.setInputFiles("#import-file", { name: "w.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(exported)) });
+    await page.waitForFunction(() => /Imported 2 weigh-ins/.test(document.getElementById("data-msg").textContent));
+    await page.setInputFiles("#import-file", { name: "bad.json", mimeType: "application/json", buffer: Buffer.from("[1,2]") });
+    await page.waitForFunction(() => /isn't a Weightmaxer export/.test(document.getElementById("data-msg").textContent));
+    await page.click("#tab-log");
+    assert.strictEqual(await page.locator(".log-row").count(), 2, "bad import leaves data alone");
+    assert.deepStrictEqual(errors, []);
+    await ctx.close();
+  });
+
   await browser.close();
   if (failures) { console.log(`${failures} failed`); process.exit(1); }
   console.log("all browser tests passed");

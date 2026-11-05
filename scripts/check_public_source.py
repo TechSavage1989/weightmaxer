@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP_DIRS = {'.git', 'build', 'dist', 'node_modules', 'test-results'}
+SKIP_DIRS = {'.git', 'build', 'dist', 'site', 'node_modules', 'test-results'}
 BINARY_OK = {'assets/icon.png'}
 SECRET = re.compile(r'(gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|AKIA[0-9A-Z]{16}|'
                     r'-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|xox[baprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9]{32,})')

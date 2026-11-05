@@ -12,6 +12,9 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   `README.txt`, `THIRD_PARTY_NOTICES.txt`) and `SHA256SUMS.txt`.
 - **Platform:** Windows 10/11 x64 with the WebView2 Runtime. Built by cross-compiling
   with Go; no C toolchain.
+- **Website:** https://techsavage1989.github.io/weightmaxer/, the same `web/` interface in
+  web mode (browser storage, export/import, no updater), deployed by the `pages` CI job
+  on every push to `main` after all checks pass.
 
 ## Build and test
 
@@ -24,6 +27,7 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 | Browser tests | `npm ci --prefix tests && npm test --prefix tests` | Linux CI |
 | Release exe opens its window | `Weightmaxer.exe --self-test=<file>` | Windows CI |
 | End-to-end update | `go test ./tests/e2e -v -timeout 25m` | Windows CI |
+| Website build | `python3 scripts/build_site.py` | Linux CI (then served and browser-tested) |
 | Live feed after publishing | `go run ./cmd/wmxtool feedcheck --expect <version>` | publish job |
 
 ## Settings and data paths
@@ -47,6 +51,8 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   the engine WebView2 uses, not from a screenshot of the Windows window.
 - No manual testing on a Windows 10 or 11 desktop has been done yet. Windows checks run
   on GitHub's hosted Windows Server runner.
+- Web version data lives only in one browser's storage for `techsavage1989.github.io`;
+  users must export to back it up or move it. Private windows lose it on close.
 
 ## Documentation
 
@@ -72,4 +78,21 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 - Approvals given for this task only: source upload and public publication to
   `TechSavage1989/weightmaxer`, pull request creation, merge into `main` after checks,
   and the `v1.0.0` tag and release with its assets. They don't authorize later work.
-- Results are recorded in the pull request and the release.
+- Results: merged as TechSavage1989/weightmaxer#1 (merge commit `49b0fe3`) after all checks passed.
+  Release `v1.0.0` was published by CI from that commit:
+  `Weightmaxer-win-x64.zip` SHA-256 `3fb99d6026437352c2361b973e8cdd33c6eff39249fee3fd2c7898ccfcf1c893`.
+  The published zip was downloaded and checked against `SHA256SUMS.txt`, matched a
+  local rebuild of `main` byte for byte, and passed `wmxtool feedcheck` (live API check,
+  download, verification, cached repeat check).
+- Windows CI on GitHub's hosted runner passed the release exe self-test (visible WebView2
+  window), the 0.9.0 → 0.9.1 end-to-end update with relaunch, cleanup, one backup and
+  preserved data, the tampered-checksum rejection and the rollback. The update from a
+  published release to a newer published release will first happen with 1.0.1.
+
+### 2026-11-05: website on GitHub Pages
+
+- Requested: also maintain Weightmaxer as a website that runs from GitHub Pages.
+- Delivered: web mode in `web/app.js` (browser storage, export/import, updater hidden),
+  `scripts/build_site.py`, CI deployment to Pages after all checks, docs and tests.
+- Same approvals as the task above (push, pull request, merge after checks); the request
+  itself asked for publication on GitHub Pages. No `VERSION` bump: website-only change.

@@ -185,7 +185,12 @@
   <!-- SETTINGS -->
   <section id="view-settings" class="view" hidden>
     <div class="stack">
-      <div class="card">
+      <div class="card web-only" hidden>
+        <h2>Weightmaxer on the web</h2>
+        <p class="hint">You're using the web version. It works offline once loaded and keeps your data in this browser only. A Windows app with the same features is also available.</p>
+        <div class="actions"><a class="btn" id="get-app" href="https://github.com/TechSavage1989/weightmaxer/releases/latest" target="_blank" rel="noopener">Get the Windows app</a></div>
+      </div>
+      <div class="card desktop-only">
         <h2>Updates</h2>
         <div class="kv"><span>Installed version</span><span id="set-version" class="mono"></span></div>
         <div class="kv"><span>Status</span><span id="set-status"></span></div>
@@ -197,9 +202,16 @@
       </div>
       <div class="card">
         <h2>Your data</h2>
-        <p class="hint">Your plan and weigh-ins are saved automatically on this computer. Updating Weightmaxer keeps them.</p>
+        <p class="hint desktop-only">Your plan and weigh-ins are saved automatically on this computer. Updating Weightmaxer keeps them.</p>
+        <p class="hint web-only" hidden>Your plan and weigh-ins are saved automatically in this browser on this device. Clearing your browser's site data erases them, so export a copy now and then. Nothing is sent to a server.</p>
         <div class="kv"><span>Saved in</span><span id="set-folder" class="mono wrap"></span></div>
-        <div class="actions"><button type="button" class="btn" id="open-folder">Open folder</button></div>
+        <div class="actions desktop-only"><button type="button" class="btn" id="open-folder">Open folder</button></div>
+        <div class="actions web-only" hidden>
+          <button type="button" class="btn" id="export-data">Export data</button>
+          <label class="btn" for="import-file">Import data</label>
+          <input type="file" id="import-file" accept="application/json,.json" hidden>
+          <span class="hint" id="data-msg" role="status"></span>
+        </div>
       </div>
     </div>
   </section>

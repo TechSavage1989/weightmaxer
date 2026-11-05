@@ -15,7 +15,7 @@
 
 ## Features
 
-Weightmaxer is a small Windows app for anyone planning a weight change. Enter your sex, age, height, weight, goal and activity level, and it works out a realistic timeline and daily calories, then helps you stay on track.
+Weightmaxer is a small Windows app, also available as a [web version](https://techsavage1989.github.io/weightmaxer/), for anyone planning a weight change. Enter your sex, age, height, weight, goal and activity level, and it works out a realistic timeline and daily calories, then helps you stay on track.
 
 - **Lose or gain weight.** Set a goal below or above your starting weight. Plan by weekly pace or by a target date.
 - **Daily calories that adjust.** Your target changes as your weight changes, shown week by week in a calorie schedule.
@@ -23,7 +23,7 @@ Weightmaxer is a small Windows app for anyone planning a weight change. Enter yo
 - **Macro targets.** Daily protein, fat and carbohydrate in grams for Balanced, Lower carb or Lower fat eating, plus a fibre target.
 - **Weigh-in log.** Record your weight and see it plotted against the plan, with how far ahead or behind you are.
 - **Safety warnings.** Weightmaxer flags paces faster than 1% of body weight per week, and goals in the underweight or obese range.
-- **Private and offline.** Your data stays on your PC. The only network request is the update check to GitHub.
+- **Private.** Your data stays on your device. The Windows app's only network request is the update check to GitHub; the web version sends nothing anywhere after the page loads.
 
 The numbers are estimates (Mifflin–St Jeor and about 3,500 kcal per pound), not medical advice.
 
@@ -47,11 +47,14 @@ Get **`Weightmaxer-win-x64.zip`** from the [latest release](https://github.com/T
 
 All versions, including any preview builds, are on the [releases page](https://github.com/TechSavage1989/weightmaxer/releases).
 
+**No install needed:** the [web version](https://techsavage1989.github.io/weightmaxer/) has the same planner, macros and weigh-in log in any modern browser, on any device. It saves your data in that browser only; use **Settings › Export data** to keep a copy or move it to another device.
+
 ## Requirements
 
 - 64-bit Windows 10 or Windows 11 (x64). Windows on ARM and 32-bit Windows aren't supported.
 - Microsoft Edge WebView2 Runtime, which is included with current Windows. If it's missing, Weightmaxer tells you where to get it.
 - No administrator rights and no installer.
+- The web version needs a current Chrome, Edge, Firefox or Safari with site storage allowed.
 
 Automated tests run on GitHub's Windows Server machines. Testing by hand on Windows 10 and 11 desktops is still to be done; please open an issue if something doesn't work.
 
@@ -72,6 +75,8 @@ Automated tests run on GitHub's Windows Server machines. Testing by hand on Wind
 **Weigh-ins.** Open **Weigh-ins**, pick a date, enter your weight and press **Add weigh-in**. Adding a second entry for the same date replaces the first. The chart compares your entries with the plan, and **History** lists them with the change since the previous one. Use **Delete** to remove an entry.
 
 **Saving.** Everything saves automatically as you type. Nothing is uploaded.
+
+**Web version.** Your data is kept in the browser you use, on that device. Private or incognito windows forget it when closed, and clearing site data erases it. **Settings › Export data** saves a `.json` file, and **Import data** loads one, including into another browser or device. The web version has no update banner; it's always the latest version when you open it.
 
 ## Updates and settings
 
@@ -96,6 +101,8 @@ A matching checksum shows the file is the one published in this repository's rel
 | Update downloads, the backup of the previous version, logs, and the window's browser data | `%LOCALAPPDATA%\Weightmaxer\` |
 
 Updating never touches your data. Release history is in [`docs/releases/`](docs/releases/).
+
+The web version stores the same data in the browser's local storage for `techsavage1989.github.io`. It is redeployed automatically whenever a change reaches `main` and all checks pass.
 
 ## Troubleshooting
 
@@ -135,4 +142,12 @@ On Windows, the end-to-end update test installs an old build, updates it from a 
 go test ./tests/e2e -v -timeout 25m
 ```
 
-GitHub Actions runs all of these on every push. A merge to `main` with a new `VERSION` publishes that version's release.
+The website is built from the same `web/` files:
+
+```bash
+python3 scripts/build_site.py
+```
+
+That writes `site/index.html` and `site/icon.png`. Serve the folder with any static web server, for example `python3 -m http.server --directory site`.
+
+GitHub Actions runs all of these on every push. A merge to `main` redeploys the website, and a new `VERSION` also publishes that version's Windows release.

@@ -7,9 +7,13 @@ this file; keep project rules here, not in per-tool files.
 ## What this is
 
 A portable Windows desktop app (Go + WebView2) for planning weight loss or gain,
-calorie and macro targets, and a weigh-in log. One public repository holds the
-source and the releases; the app's update checker reads this repository's
-GitHub releases without signing in.
+calorie and macro targets, and a weigh-in log, plus the same interface as a
+website on GitHub Pages (https://techsavage1989.github.io/weightmaxer/). One
+public repository holds the source, the releases and the website; the app's
+update checker reads this repository's GitHub releases without signing in.
+
+Maintain both: every interface change in `web/` ships to the website on the next
+merge to `main` and to the Windows app in its next release. Test both modes.
 
 ## Folder map
 
@@ -20,9 +24,9 @@ GitHub releases without signing in.
 | `internal/host/` | Windows window, WebView2 bindings, update UI state (Windows only) |
 | `internal/update/` | Feed check, scheduler, download, verification, install helper, rollback |
 | `internal/store/`, `internal/paths/`, `internal/version/` | Data file, per-user folders, version and identity marker |
-| `web/` | The interface (HTML, CSS, JS) embedded into the executable |
+| `web/` | The interface (HTML, CSS, JS) embedded into the executable and published as the website |
 | `assets/` | Icon source and PNG, Windows resource config, files shipped in the zip |
-| `scripts/` | Build/package script, repository checks (`test_*.py`), icon renderer |
+| `scripts/` | Build/package script, website build (`build_site.py`), repository checks (`test_*.py`), icon renderer |
 | `tests/browser/` | Playwright tests and the README screenshot capture script |
 | `tests/e2e/` | Windows end-to-end update test |
 | `docs/` | Standards, architecture, `releases/<version>.md`, `images/` |
@@ -35,6 +39,7 @@ with the reason recorded here. Never relax it to a pattern.
 
 ```bash
 python3 scripts/build.py                                  # dist/ exe, zip, SHA256SUMS.txt
+python3 scripts/build_site.py                             # site/ for GitHub Pages
 go test ./...                                             # unit tests (Linux or Windows)
 python3 -m unittest discover -s scripts -p "test_*.py" -v # repository checks
 python3 scripts/check_public_source.py                    # no secrets, binaries or private data
@@ -57,6 +62,20 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
   installed copy. Changing them breaks updates for existing users.
 - Approvals to push, merge or release are per task. Record them in the handoff
   as history; they don't carry over to later tasks.
+
+## Website
+
+- `scripts/build_site.py` inlines `web/` into `site/index.html` and adds the icon and
+  meta tags. CI tests the built site served over HTTP, then the `pages` job deploys
+  it after all checks pass on a push to `main`. Pages uses the "GitHub Actions" source.
+- The page is in desktop mode when the host's `wmxLoad` function exists, and in web
+  mode otherwise. Mark elements `.desktop-only` (updates, folders) or `.web-only`
+  (export/import, Windows download) and keep both modes covered by browser tests.
+- Web mode stores the whole document in `localStorage["weightmaxer-data"]`. Keep the
+  saved document format compatible with the desktop `data.json`, so an export from one
+  imports into the other. Never add analytics, third-party scripts or remote fonts.
+- Website-only changes don't need a `VERSION` bump. A change that alters the Windows
+  app's behaviour does.
 
 ## Gotchas
 
