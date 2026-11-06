@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Weightmaxer</title>
+<script>
+  // Apply a saved Light/Dark choice before the page draws, so it doesn't flash.
+  try { var t = JSON.parse(localStorage.getItem("weightmaxer-data") || "{}").theme; if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+</script>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -17,6 +21,7 @@
     <button role="tab" id="tab-log" aria-selected="false" data-view="log">Weigh-ins</button>
     <button role="tab" id="tab-settings" aria-selected="false" data-view="settings">Settings</button>
   </nav>
+  <button type="button" class="theme-btn" id="theme-btn" aria-label="Switch to dark mode" title="Switch to dark mode"></button>
 </header>
 
 <section id="update-banner" class="banner" hidden aria-live="polite"></section>
@@ -112,8 +117,11 @@
           <div class="alerts" id="alerts"></div>
         </div>
         <div class="card">
-          <h2>Weight over time</h2>
-          <svg id="chart" class="chart" role="img" aria-label="Projected weight by week"></svg>
+          <div class="card-head">
+            <h2>Weight over time</h2>
+            <div class="seg axis-toggle" role="group" aria-label="Chart axis"><button type="button" data-axis="weeks" aria-pressed="true">Weeks</button><button type="button" data-axis="dates" aria-pressed="false">Dates</button></div>
+          </div>
+          <svg id="chart" class="chart" role="img" aria-label="Projected weight over time"></svg>
         </div>
         <div class="card">
           <h2>Body mass index</h2>
@@ -171,6 +179,10 @@
             <div class="big" id="log-head"></div>
             <div class="sub" id="log-sub"></div>
           </div>
+          <div class="card-head chart-head">
+            <span class="lbl">Chart</span>
+            <div class="seg axis-toggle" role="group" aria-label="Chart axis"><button type="button" data-axis="weeks" aria-pressed="true">Weeks</button><button type="button" data-axis="dates" aria-pressed="false">Dates</button></div>
+          </div>
           <svg id="log-chart" class="chart" role="img" aria-label="Weigh-ins compared with the plan"></svg>
           <div class="legend"><span class="key plan"></span>Plan <span class="key actual"></span>Your weigh-ins</div>
         </div>
@@ -186,6 +198,17 @@
   <!-- SETTINGS -->
   <section id="view-settings" class="view" hidden>
     <div class="stack">
+      <div class="card">
+        <div class="card-head">
+          <h2>Appearance</h2>
+          <div class="seg" role="group" aria-label="Appearance">
+            <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+        <p class="hint">System follows your device's light or dark setting. The button at the top switches between light and dark.</p>
+      </div>
       <div class="card web-only" hidden>
         <h2>Weightmaxer on the web</h2>
         <p class="hint">You're using the web version. It works offline once loaded and keeps your data in this browser only. A Windows app with the same features is also available.</p>
