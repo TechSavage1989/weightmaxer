@@ -106,6 +106,12 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
   zooms in on focus). iPhone Safari date fields have a built-in minimum width; keep the
   `@supports (-webkit-touch-callout: none)` rules in `web/app.css`. Headless Chromium can't
   reproduce that, so check real-phone reports against screenshots.
+- Theme: `data.theme` is `system`, `light` or `dark`; `light`/`dark` set `data-theme` on
+  `<html>`, and every colour is a token that both `@media (prefers-color-scheme: dark)` and
+  `[data-theme="dark"]` redefine. A small script in `index.html` applies the saved web
+  choice before first paint. Don't add colours outside the tokens.
+- Chart time labels go through `xTicks` and the collision filter in `drawChart`; the first
+  and last labels always show. The overlap test runs in both Weeks and Dates modes.
 - The page scrolls as a whole. Don't add nested vertical scroll areas; the
   browser test fails on them.
 - Screenshots use fictional data only and must be recaptured in the same pull

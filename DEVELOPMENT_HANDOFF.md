@@ -4,7 +4,7 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 
 ## Current state
 
-- **Version:** 1.0.0 (first release), from `VERSION`.
+- **Version:** 1.1.0, from `VERSION` (1.0.0 was the first release).
 - **Repository and update feed:** `TechSavage1989/weightmaxer` (public). Source and
   releases live here; installed copies read
   `https://api.github.com/repos/TechSavage1989/weightmaxer/releases/latest`.
@@ -88,7 +88,7 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 - Windows CI on GitHub's hosted runner passed the release exe self-test (visible WebView2
   window), the 0.9.0 → 0.9.1 end-to-end update with relaunch, cleanup, one backup and
   preserved data, the tampered-checksum rejection and the rollback. The update from a
-  published release to a newer published release will first happen with 1.0.1.
+  published release to a newer published release first happens with 1.1.0.
 
 ### 2026-11-05: website on GitHub Pages
 
@@ -110,6 +110,17 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   side-scrolling, cut-off control, wrapped tab, overlapping label or small text field.
 - The Windows app picks up the same CSS in its next release; no `VERSION` bump for this
   website fix. Same approvals as above (push, pull request, merge after checks).
+
+### 2026-11-06: 1.1.0 (chart dates, light/dark mode, desktop overlap fix)
+
+- Requested: the BMI label overlap also happens in the Windows app (1.0.0 predates the fix
+  on `main`), weight charts configurable by weeks or dates, and a light/dark mode button.
+- Delivered: **Weeks / Dates** axis on both charts (saved as `axis`), top-bar theme button
+  and Settings › Appearance (saved as `theme`; `data-theme` on `<html>` overrides the
+  device), axis labels that never collide, browser tests for all of it.
+- Released as `VERSION` 1.1.0, the first update installed copies of 1.0.0 are offered.
+- Approval: the owner wrote "permission granted to merge" for this change, which publishes
+  the 1.1.0 release through CI. PR #4 (custom domain) is separate and waits for the domain.
 
 ### 2026-11-06: custom domain for the website
 

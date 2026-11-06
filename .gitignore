@@ -11,3 +11,5 @@ node_modules/
 Thumbs.db
 desktop.ini
 /site/
+__pycache__/
+*.pyc
