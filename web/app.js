@@ -150,7 +150,7 @@
   function clearPlan(head, sub) {
     $("head").textContent = head;
     $("subhead").textContent = sub || "";
-    ["stats", "alerts", "table"].forEach((i) => ($(i).innerHTML = ""));
+    ["stats", "alerts", "table", "schedule-goal"].forEach((i) => ($(i).innerHTML = ""));
     $("chart").innerHTML = "";
     lastSim = null;
     $("macro-card").hidden = true;
@@ -273,12 +273,15 @@
     const rows = w.filter((r, i) => i % step === 0 && !r.end);
     const last = w[w.length - 1];
     const s = startDate();
-    let h = `<thead><tr><th>Week</th><th>Date</th><th class="n">Weight</th><th class="n">Eat</th><th class="n">Burn</th></tr></thead><tbody>`;
+    // The Burn column is hidden on phones (.burn) so Eat always fits on screen.
+    let h = `<thead><tr><th>Week</th><th>Date</th><th class="n">Weight</th><th class="n">Eat<span class="unit-head"> kcal</span></th><th class="n burn">Burn</th></tr></thead><tbody>`;
     rows.forEach((r) => {
-      h += `<tr><td>${r.week}</td><td>${fmtDate(addDays(s, r.week * 7))}</td><td class="n">${fmtW(r.kg)}</td><td class="n">${fmtN(r.intake)} kcal</td><td class="n">${fmtN(r.tdee)} kcal</td></tr>`;
+      h += `<tr><td>${r.week}</td><td>${fmtDate(addDays(s, r.week * 7))}</td><td class="n">${fmtW(r.kg)}</td><td class="n">${fmtN(r.intake)}<span class="unit"> kcal</span></td><td class="n burn">${fmtN(r.tdee)} kcal</td></tr>`;
     });
-    h += `<tr><td>${last.week.toFixed(1)}</td><td>${fmtDate(addDays(s, Math.round(last.week * 7)))}</td><td class="n">${fmtW(last.kg)}</td><td class="n" colspan="2">Goal reached · maintain at ${fmtN(last.tdee)} kcal</td></tr>`;
+    const goalDay = addDays(s, Math.round(last.week * 7));
+    h += `<tr class="goal-row"><td>${last.week.toFixed(1)}</td><td>${fmtDate(goalDay)}</td><td class="n">${fmtW(last.kg)}</td><td class="n">${fmtN(last.tdee)}<span class="unit"> kcal</span></td><td class="n burn">${fmtN(last.tdee)} kcal</td></tr>`;
     $("table").innerHTML = h + "</tbody>";
+    $("schedule-goal").textContent = `Goal reached ${fmtDate(goalDay)}. From then on, eat about ${fmtN(last.tdee)} kcal a day to stay at ${fmtW(last.kg)}.`;
   }
 
   function niceStep(raw) {
@@ -330,9 +333,40 @@
     const pos = (b) => Math.min(100, Math.max(0, ((b - min) / (max - min)) * 100));
     const bands = [[15, 18.5, "var(--warn)"], [18.5, 25, "var(--good)"], [25, 30, "var(--warn)"], [30, 40, "var(--bad)"]];
     $("bmi-bar").innerHTML = bands.map(([a, b, c]) => `<span style="width:${pos(b) - pos(a)}%;background:${c}"></span>`).join("");
-    $("bmi-marks").innerHTML =
-      `<div class="bmi-mark" style="left:${pos(now)}%">Start ${now.toFixed(1)}</div>` +
-      `<div class="bmi-mark" style="left:${pos(goal)}%;color:var(--accent)">Goal ${goal.toFixed(1)}</div>`;
+    // Ticks mark the exact values. Labels are measured and placed in pixels:
+    // centred under their tick, kept inside the card, pushed apart when they'd
+    // collide, and moved to a second row when two can't fit side by side.
+    const box = $("bmi-marks");
+    const marks = [{ b: now, text: `Start ${now.toFixed(1)}`, color: "" }, { b: goal, text: `Goal ${goal.toFixed(1)}`, color: "color:var(--accent);" }];
+    box.innerHTML = marks.map((m) => `<span class="tick" style="${m.color}"></span><span class="lab" style="${m.color}">${m.text}</span>`).join("");
+    const W = box.clientWidth;
+    if (!W) return; // hidden; drawn again when the Plan tab is shown
+    const ticks = box.querySelectorAll(".tick"), labs = box.querySelectorAll(".lab");
+    const GAP = 8;
+    marks.forEach((m, i) => {
+      m.x = (pos(m.b) / 100) * W;
+      m.w = labs[i].offsetWidth || m.text.length * 7;
+      m.left = Math.min(Math.max(0, m.x - m.w / 2), W - m.w);
+      m.row = 0;
+    });
+    // Order by value, not position: off-scale values share the edge of the bar.
+    const [a, b] = marks[0].b <= marks[1].b ? marks : [marks[1], marks[0]];
+    if (b.left < a.left + a.w + GAP) {
+      b.left = Math.min(a.left + a.w + GAP, W - b.w);
+      a.left = Math.max(0, Math.min(a.left, b.left - GAP - a.w));
+      if (b.left < a.left + a.w + GAP) {
+        // No room side by side: second row, each label back under its own tick.
+        b.row = 1;
+        a.left = Math.min(Math.max(0, a.x - a.w / 2), W - a.w);
+        b.left = Math.min(Math.max(0, b.x - b.w / 2), W - b.w);
+      }
+    }
+    box.classList.toggle("two-rows", a.row + b.row > 0);
+    marks.forEach((m, i) => {
+      ticks[i].style.left = `${m.x - 1}px`;
+      labs[i].style.left = `${m.left}px`;
+      labs[i].style.top = `${11 + m.row * 15}px`;
+    });
   }
 
   // ---------- weigh-ins ----------

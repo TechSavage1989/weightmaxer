@@ -47,7 +47,7 @@ Get **`Weightmaxer-win-x64.zip`** from the [latest release](https://github.com/T
 
 All versions, including any preview builds, are on the [releases page](https://github.com/TechSavage1989/weightmaxer/releases).
 
-**No install needed:** the [web version](https://techsavage1989.github.io/weightmaxer/) has the same planner, macros and weigh-in log in any modern browser, on any device. It saves your data in that browser only; use **Settings › Export data** to keep a copy or move it to another device.
+**No install needed:** the [web version](https://techsavage1989.github.io/weightmaxer/) has the same planner, macros and weigh-in log in any modern browser, on phones as well as computers. It saves your data in that browser only; use **Settings › Export data** to keep a copy or move it to another device.
 
 ## Requirements
 

@@ -95,6 +95,12 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
   asleep counts toward the five-minute interval.
 - Keep update checks within GitHub's 60 unauthenticated requests per hour per IP:
   ETag caching, pause on low remaining limit, honour `Retry-After`.
+- The website is used on phones. Keep it working at 390 px wide: the browser test
+  "phone width" fails if the page or a table needs side-scrolling, a tab wraps, a control
+  sticks out of its card, BMI or chart labels overlap (checked over many start/goal pairs), or a text field is under 16 px (Safari
+  zooms in on focus). iPhone Safari date fields have a built-in minimum width; keep the
+  `@supports (-webkit-touch-callout: none)` rules in `web/app.css`. Headless Chromium can't
+  reproduce that, so check real-phone reports against screenshots.
 - The page scrolls as a whole. Don't add nested vertical scroll areas; the
   browser test fails on them.
 - Screenshots use fictional data only and must be recaptured in the same pull

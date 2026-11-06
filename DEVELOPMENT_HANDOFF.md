@@ -96,3 +96,16 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   `scripts/build_site.py`, CI deployment to Pages after all checks, docs and tests.
 - Same approvals as the task above (push, pull request, merge after checks); the request
   itself asked for publication on GitHub Pages. No `VERSION` bump: website-only change.
+
+### 2026-11-05: phone layout fixes for the website
+
+- Reported from an iPhone: page wider than the screen, Settings tab cut off, tabs wrapping,
+  date fields sticking out of their cards, overlapping BMI labels.
+- Fixed in `web/app.css` and `web/app.js`: phone breakpoints (two-row top bar, 16 px inputs,
+  single-column details, schedule without the Burn column, stacked macros), iOS date-field
+  rules, and BMI labels placed by measuring them: centred under their tick, kept inside the
+  card, pushed apart or moved to a second row when they'd collide, ordered by value (a
+  follow-up report showed the first, rule-based version still overlapped near the ends). A 390 px browser test fails on any
+  side-scrolling, cut-off control, wrapped tab, overlapping label or small text field.
+- The Windows app picks up the same CSS in its next release; no `VERSION` bump for this
+  website fix. Same approvals as above (push, pull request, merge after checks).

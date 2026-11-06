@@ -175,6 +175,99 @@ const base = { current: "1.0.0", latest: "1.1.0", dev: false, check: { kind: "av
     }
   });
 
+  await test("phone width: nothing cut off, tabs on one line, BMI labels apart", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(process.env.WMX_SITE_URL || PAGE);
+    await page.waitForFunction(() => document.getElementById("head").textContent.length > 0);
+    // Start and goal BMI close together, as in the reported screenshot.
+    await page.selectOption("#sex", "m");
+    await set(page, "#hft", 6); await set(page, "#hin", 0); await set(page, "#w", 176); await set(page, "#g", 169);
+    await set(page, "#floor", 800);
+    await page.click("#m-date");
+    for (const tab of ["plan", "log", "settings"]) {
+      await page.click("#tab-" + tab);
+      const problems = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        const out = [];
+        if (document.documentElement.scrollWidth > vw) out.push(`page is ${document.documentElement.scrollWidth}px wide in a ${vw}px screen`);
+        for (const el of document.querySelectorAll(".topbar *, .view:not([hidden]) .card, .view:not([hidden]) input, .view:not([hidden]) select, .view:not([hidden]) .btn")) {
+          const r = el.getBoundingClientRect();
+          if (r.width && (r.right > vw + 0.5 || r.left < -0.5)) out.push(`${el.id || el.className || el.tagName} spans ${Math.round(r.left)}–${Math.round(r.right)}`);
+        }
+        for (const b of document.querySelectorAll(".tabs button")) {
+          if (b.getBoundingClientRect().height > 44) out.push(`tab "${b.textContent}" wraps`);
+        }
+        // Inputs stay inside their card.
+        for (const inp of document.querySelectorAll(".view:not([hidden]) .card input, .view:not([hidden]) .card select")) {
+          const card = inp.closest(".card").getBoundingClientRect(), r = inp.getBoundingClientRect();
+          if (r.width && r.right > card.right - 1) out.push(`${inp.id} sticks out of its card`);
+        }
+        for (const w of document.querySelectorAll(".view:not([hidden]) .table-wrap")) {
+          if (w.scrollWidth > w.clientWidth + 1) out.push(`table needs side-scrolling (${w.scrollWidth}px in ${w.clientWidth}px)`);
+        }
+        const marks = [...document.querySelectorAll(".bmi-marks .lab")].map((m) => m.getBoundingClientRect());
+        if (marks.length === 2 && !document.getElementById("view-plan").hidden) {
+          const [a, b] = marks;
+          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) out.push("BMI labels overlap");
+        }
+        return out;
+      });
+      assert.deepStrictEqual(problems, [], tab + ": " + problems.join("; "));
+    }
+    // Text inputs are at least 16px so iPhone Safari doesn't zoom in on focus.
+    const small = await page.evaluate(() => [...document.querySelectorAll("input:not([type=range]):not([type=file]), select")].filter((e) => parseFloat(getComputedStyle(e).fontSize) < 16).map((e) => e.id));
+    assert.deepStrictEqual(small, [], "inputs under 16px: " + small.join(", "));
+    assert.deepStrictEqual(errors, []);
+    await ctx.close();
+  });
+
+  await test("BMI labels never overlap or leave the card", async () => {
+    for (const width of [390, 1280]) {
+      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const page = await ctx.newPage();
+      await page.goto(PAGE);
+      await page.waitForFunction(() => document.getElementById("head").textContent.length > 0);
+      await set(page, "#hft", 5); await set(page, "#hin", 6);
+      // Pairs of start/goal weights (lb) covering both ends of the scale, close and far apart,
+      // gain and loss. At 5 ft 6 in, 90 lb is BMI 14.5 and 360 lb is BMI 58.
+      const pairs = [[176, 169], [100, 104], [95, 92], [104, 120], [340, 330], [360, 350], [300, 360], [150, 151], [150, 150.5], [118, 125], [200, 120], [96, 300]];
+      for (const [w, g] of pairs) {
+        await set(page, "#w", w); await set(page, "#g", g);
+        const bad = await page.evaluate(() => {
+          const card = document.getElementById("bmi-marks").closest(".card").getBoundingClientRect();
+          const labs = [...document.querySelectorAll(".bmi-marks .lab")].map((l) => l.getBoundingClientRect());
+          const out = [];
+          for (const r of labs) if (r.left < card.left + 1 || r.right > card.right - 1) out.push("outside card");
+          if (labs.length === 2) {
+            const [a, b] = labs;
+            if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) out.push("overlap");
+          }
+          const legend = [...document.querySelectorAll(".bmi-legend span")].map((l) => l.getBoundingClientRect());
+          for (let i = 0; i < legend.length; i++) for (let j = i + 1; j < legend.length; j++) {
+            const a = legend[i], b = legend[j];
+            if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) out.push("legend overlap");
+          }
+          // Chart text (axis labels, start and goal labels) doesn't collide either.
+          const texts = [...document.querySelectorAll("#chart text")].map((t) => [t.textContent, t.getBoundingClientRect()]);
+          for (let i = 0; i < texts.length; i++) for (let j = i + 1; j < texts.length; j++) {
+            const [ta, a] = texts[i], [tb, b] = texts[j];
+            if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) out.push(`chart "${ta}" overlaps "${tb}"`);
+          }
+          // Lower value's label comes first.
+          const marks = [...document.querySelectorAll(".bmi-marks .lab")];
+          const vals = marks.map((m) => parseFloat(m.textContent.split(" ")[1]));
+          if (labs.length === 2 && labs[0].top === labs[1].top && (vals[0] - vals[1]) * (labs[0].left - labs[1].left) < 0) out.push("labels out of order");
+          return out;
+        });
+        assert.deepStrictEqual(bad, [], `${width}px, ${w} → ${g} lb`);
+      }
+      await ctx.close();
+    }
+  });
+
   await test("web version: saves in the browser, hides updates, exports and imports", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
     const page = await ctx.newPage();

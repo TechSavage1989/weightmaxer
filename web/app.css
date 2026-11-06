@@ -46,7 +46,7 @@ h2 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin
 .brand-name { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: 0.01em; }
 .tabs { display: flex; gap: 4px; }
 .tabs button {
-  font: inherit; font-weight: 600; border: 0; background: transparent; color: var(--muted);
+  font: inherit; font-weight: 600; white-space: nowrap; border: 0; background: transparent; color: var(--muted);
   padding: 8px 14px; border-radius: 7px; cursor: pointer;
 }
 .tabs button:hover { background: var(--sunken); color: var(--fg); }
@@ -86,6 +86,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .inp { position: relative; }
 .inp input, select, input[type="date"] {
+  min-width: 0;
   width: 100%; font: inherit; font-family: var(--font-mono); font-size: 14.5px;
   padding: 8px 44px 8px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--sunken); color: var(--fg);
 }
@@ -135,6 +136,8 @@ th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spac
 td { padding: 7px 10px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); white-space: nowrap; }
 td:first-child, th:first-child { padding-left: 0; }
 tr:last-child td { border-bottom: 0; }
+.goal-row td { font-weight: 600; color: var(--good); }
+.unit-head { display: none; }
 .n { text-align: right; }
 
 .log-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -147,9 +150,10 @@ tr:last-child td { border-bottom: 0; }
 .bmi-scale { display: grid; gap: 6px; }
 .bmi-bar { height: 10px; border-radius: 5px; display: flex; overflow: hidden; }
 .bmi-bar span { height: 100%; opacity: .75; }
-.bmi-marks { position: relative; height: 34px; }
-.bmi-mark { position: absolute; top: 0; transform: translateX(-50%); font-family: var(--font-mono); font-size: 11px; text-align: center; white-space: nowrap; }
-.bmi-mark::before { content: ""; display: block; width: 2px; height: 8px; margin: 0 auto 2px; background: currentColor; }
+.bmi-marks { position: relative; height: 30px; font-family: var(--font-mono); font-size: 11px; color: var(--fg); }
+.bmi-marks.two-rows { height: 45px; }
+.bmi-marks .tick { position: absolute; top: 0; width: 2px; height: 8px; background: currentColor; }
+.bmi-marks .lab { position: absolute; top: 11px; white-space: nowrap; }
 .bmi-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); gap: 8px; flex-wrap: wrap; }
 
 .kv { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; }
@@ -175,3 +179,45 @@ tr:last-child td { border-bottom: 0; }
 #macro { width: auto; min-width: 150px; }
 a.btn { text-decoration: none; display: inline-block; }
 label.btn { display: inline-block; }
+
+/* iPhone and iPad Safari: date fields have a built-in minimum width and centred text,
+   which pushed them out of their cards and widened the page. */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-height: 2.6em; }
+  input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+}
+
+/* Phones (portrait) */
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; gap: 8px 12px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); }
+  .tabs { width: 100%; }
+  .tabs button { flex: 1 1 0; padding: 8px 6px; }
+  main { padding: 16px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)); }
+  .banner { margin: 12px 16px 0; }
+  .grid, .results, .stack { gap: 16px; }
+  .card { padding: 16px; gap: 14px; }
+  .headline .big { font-size: 26px; }
+  .inp input, select, input[type="date"] { font-size: 16px; } /* 16px stops Safari zooming in on focus */
+  .kv { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .log-row { grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 10px; font-size: 13.5px; }
+  .log-row .delta { min-width: 0; }
+  .stat { padding: 10px 12px; }
+  .stat .v { font-size: 20px; }
+}
+@media (max-width: 480px) {
+  .burn { display: none; }
+  .unit { display: none; }
+  .unit-head { display: inline; }
+  th, td { padding: 7px 6px; font-size: 13px; }
+  th { font-size: 10.5px; }
+  /* A colour key instead of labels spread under the bar, which can't line up at this width. */
+  .bmi-legend { justify-content: flex-start; gap: 4px 14px; }
+  .bmi-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .bmi-legend span::before { content: ""; width: 10px; height: 10px; border-radius: 2px; opacity: .75; }
+  .bmi-legend span:nth-child(1)::before, .bmi-legend span:nth-child(3)::before { background: var(--warn); }
+  .bmi-legend span:nth-child(2)::before { background: var(--good); }
+  .bmi-legend span:nth-child(4)::before { background: var(--bad); }
+  .macros { grid-template-columns: minmax(0, 1fr); }
+  .macro { grid-template-columns: auto 1fr auto; align-items: baseline; gap: 10px; }
+  .macro .g { font-size: 18px; }
+}
