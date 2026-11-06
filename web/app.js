@@ -333,21 +333,40 @@
     const pos = (b) => Math.min(100, Math.max(0, ((b - min) / (max - min)) * 100));
     const bands = [[15, 18.5, "var(--warn)"], [18.5, 25, "var(--good)"], [25, 30, "var(--warn)"], [30, 40, "var(--bad)"]];
     $("bmi-bar").innerHTML = bands.map(([a, b, c]) => `<span style="width:${pos(b) - pos(a)}%;background:${c}"></span>`).join("");
-    // Labels sit centred under their tick, but turn outwards when the two are
-    // close together or near an edge, so they never overlap or get cut off.
-    const width = $("bmi-marks").clientWidth || 600;
+    // Ticks mark the exact values. Labels are measured and placed in pixels:
+    // centred under their tick, kept inside the card, pushed apart when they'd
+    // collide, and moved to a second row when two can't fit side by side.
+    const box = $("bmi-marks");
     const marks = [{ b: now, text: `Start ${now.toFixed(1)}`, color: "" }, { b: goal, text: `Goal ${goal.toFixed(1)}`, color: "color:var(--accent);" }];
-    const close = (Math.abs(pos(now) - pos(goal)) / 100) * width < 96;
-    const [lo, hi] = now <= goal ? marks : [marks[1], marks[0]];
-    lo.align = close ? "end" : "center";
-    hi.align = close ? "start" : "center";
-    for (const m of marks) {
-      const px = (pos(m.b) / 100) * width;
-      if (px < 48) m.align = "start";
-      else if (width - px < 48) m.align = "end";
+    box.innerHTML = marks.map((m) => `<span class="tick" style="${m.color}"></span><span class="lab" style="${m.color}">${m.text}</span>`).join("");
+    const W = box.clientWidth;
+    if (!W) return; // hidden; drawn again when the Plan tab is shown
+    const ticks = box.querySelectorAll(".tick"), labs = box.querySelectorAll(".lab");
+    const GAP = 8;
+    marks.forEach((m, i) => {
+      m.x = (pos(m.b) / 100) * W;
+      m.w = labs[i].offsetWidth || m.text.length * 7;
+      m.left = Math.min(Math.max(0, m.x - m.w / 2), W - m.w);
+      m.row = 0;
+    });
+    // Order by value, not position: off-scale values share the edge of the bar.
+    const [a, b] = marks[0].b <= marks[1].b ? marks : [marks[1], marks[0]];
+    if (b.left < a.left + a.w + GAP) {
+      b.left = Math.min(a.left + a.w + GAP, W - b.w);
+      a.left = Math.max(0, Math.min(a.left, b.left - GAP - a.w));
+      if (b.left < a.left + a.w + GAP) {
+        // No room side by side: second row, each label back under its own tick.
+        b.row = 1;
+        a.left = Math.min(Math.max(0, a.x - a.w / 2), W - a.w);
+        b.left = Math.min(Math.max(0, b.x - b.w / 2), W - b.w);
+      }
     }
-    $("bmi-marks").innerHTML = marks.map((m) =>
-      `<div class="bmi-mark" style="${m.color}left:${pos(m.b)}%"><span class="tick"></span><span class="lab" data-align="${m.align}">${m.text}</span></div>`).join("");
+    box.classList.toggle("two-rows", a.row + b.row > 0);
+    marks.forEach((m, i) => {
+      ticks[i].style.left = `${m.x - 1}px`;
+      labs[i].style.left = `${m.left}px`;
+      labs[i].style.top = `${11 + m.row * 15}px`;
+    });
   }
 
   // ---------- weigh-ins ----------

@@ -150,13 +150,10 @@ tr:last-child td { border-bottom: 0; }
 .bmi-scale { display: grid; gap: 6px; }
 .bmi-bar { height: 10px; border-radius: 5px; display: flex; overflow: hidden; }
 .bmi-bar span { height: 100%; opacity: .75; }
-.bmi-marks { position: relative; height: 30px; }
-.bmi-mark { position: absolute; top: 0; width: 0; height: 100%; font-family: var(--font-mono); font-size: 11px; color: var(--fg); }
-.bmi-mark .tick { position: absolute; left: -1px; top: 0; width: 2px; height: 8px; background: currentColor; }
-.bmi-mark .lab { position: absolute; top: 11px; white-space: nowrap; }
-.bmi-mark .lab[data-align="center"] { left: 0; transform: translateX(-50%); }
-.bmi-mark .lab[data-align="start"] { left: -2px; }
-.bmi-mark .lab[data-align="end"] { right: -2px; }
+.bmi-marks { position: relative; height: 30px; font-family: var(--font-mono); font-size: 11px; color: var(--fg); }
+.bmi-marks.two-rows { height: 45px; }
+.bmi-marks .tick { position: absolute; top: 0; width: 2px; height: 8px; background: currentColor; }
+.bmi-marks .lab { position: absolute; top: 11px; white-space: nowrap; }
 .bmi-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); gap: 8px; flex-wrap: wrap; }
 
 .kv { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; }
@@ -213,8 +210,13 @@ label.btn { display: inline-block; }
   .unit-head { display: inline; }
   th, td { padding: 7px 6px; font-size: 13px; }
   th { font-size: 10.5px; }
-  .bmi-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
-  .bmi-legend span:nth-child(even) { text-align: right; }
+  /* A colour key instead of labels spread under the bar, which can't line up at this width. */
+  .bmi-legend { justify-content: flex-start; gap: 4px 14px; }
+  .bmi-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .bmi-legend span::before { content: ""; width: 10px; height: 10px; border-radius: 2px; opacity: .75; }
+  .bmi-legend span:nth-child(1)::before, .bmi-legend span:nth-child(3)::before { background: var(--warn); }
+  .bmi-legend span:nth-child(2)::before { background: var(--good); }
+  .bmi-legend span:nth-child(4)::before { background: var(--bad); }
   .macros { grid-template-columns: minmax(0, 1fr); }
   .macro { grid-template-columns: auto 1fr auto; align-items: baseline; gap: 10px; }
   .macro .g { font-size: 18px; }
