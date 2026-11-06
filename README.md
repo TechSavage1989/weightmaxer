@@ -22,6 +22,8 @@ Weightmaxer is a small Windows app, also available as a [web version](https://te
 - **Your own calorie minimum.** Plans never go below 1,200 kcal (women) or 1,500 kcal (men) unless you set a lower minimum, down to 800 kcal, which shows a warning to get medical advice.
 - **Macro targets.** Daily protein, fat and carbohydrate in grams for Balanced, Lower carb or Lower fat eating, plus a fibre target.
 - **Weigh-in log.** Record your weight and see it plotted against the plan, with how far ahead or behind you are.
+- **Weeks or dates.** Show the charts by week number or by calendar date.
+- **Light and dark mode.** Follow your device, or pick light or dark.
 - **Safety warnings.** Weightmaxer flags paces faster than 1% of body weight per week, and goals in the underweight or obese range.
 - **Private.** Your data stays on your device. The Windows app's only network request is the update check to GitHub; the web version sends nothing anywhere after the page loads.
 
@@ -70,9 +72,12 @@ Automated tests run on GitHub's Windows Server machines. Testing by hand on Wind
 **Plan.** Fill in **About you** with your sex, age, height, starting weight, goal weight and activity level. Choose **lb / ft** or **kg / cm** at the top of the form.
 - **Plan by › Pace** sets how much to lose or gain each week. **Target date** works out the pace from a date instead.
 - **Lowest daily calories** is optional. Leave it empty for the standard minimum, or enter 800 kcal or more. Values below the standard minimum show a warning; eat that little only with a doctor's supervision.
+- Above each chart, **Weeks / Dates** switches the time axis between week numbers and calendar dates. The choice applies to both charts.
 - The results show your goal date, what to eat now, maintenance calories and your daily deficit or surplus. Below them are the weight chart, your BMI, **Daily macros** (pick a diet style in the card) and the week-by-week **Calorie schedule**.
 
 **Weigh-ins.** Open **Weigh-ins**, pick a date, enter your weight and press **Add weigh-in**. Adding a second entry for the same date replaces the first. The chart compares your entries with the plan, and **History** lists them with the change since the previous one. Use **Delete** to remove an entry.
+
+**Appearance.** The sun or moon button at the top right switches between light and dark. **Settings › Appearance** also offers **System**, which follows your device.
 
 **Saving.** Everything saves automatically as you type. Nothing is uploaded.
 

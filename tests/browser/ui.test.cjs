@@ -234,7 +234,8 @@ const base = { current: "1.0.0", latest: "1.1.0", dev: false, check: { kind: "av
       // Pairs of start/goal weights (lb) covering both ends of the scale, close and far apart,
       // gain and loss. At 5 ft 6 in, 90 lb is BMI 14.5 and 360 lb is BMI 58.
       const pairs = [[176, 169], [100, 104], [95, 92], [104, 120], [340, 330], [360, 350], [300, 360], [150, 151], [150, 150.5], [118, 125], [200, 120], [96, 300]];
-      for (const [w, g] of pairs) {
+      for (const axis of ["weeks", "dates"]) for (const [w, g] of pairs) {
+        await page.click(`#view-plan .axis-toggle [data-axis=${axis}]`);
         await set(page, "#w", w); await set(page, "#g", g);
         const bad = await page.evaluate(() => {
           const card = document.getElementById("bmi-marks").closest(".card").getBoundingClientRect();
@@ -262,10 +263,58 @@ const base = { current: "1.0.0", latest: "1.1.0", dev: false, check: { kind: "av
           if (labs.length === 2 && labs[0].top === labs[1].top && (vals[0] - vals[1]) * (labs[0].left - labs[1].left) < 0) out.push("labels out of order");
           return out;
         });
-        assert.deepStrictEqual(bad, [], `${width}px, ${w} → ${g} lb`);
+        assert.deepStrictEqual(bad, [], `${width}px, ${axis}, ${w} → ${g} lb: ${bad.join("; ")}`);
       }
       await ctx.close();
     }
+  });
+
+  await test("charts show weeks or dates, in both charts, and remember the choice", () => withPage(browser, {}, async (page) => {
+    const labels = (id) => page.$$eval(`#${id} text`, (ts) => ts.map((t) => t.textContent));
+    assert.ok((await labels("chart")).includes("start"));
+    assert.ok((await labels("chart")).some((l) => /^wk \d+$/.test(l)));
+    await page.click("#view-plan .axis-toggle [data-axis=dates]");
+    const dated = await labels("chart");
+    assert.ok(!dated.some((l) => /^wk /.test(l)), dated.join(","));
+    assert.ok(dated.some((l) => /^[A-Z][a-z]{2}( \d{1,2}| '?\d{2})?$/.test(l)), dated.join(","));
+    await page.click("#tab-log");
+    assert.strictEqual(await page.getAttribute("#view-log .axis-toggle [data-axis=dates]", "aria-pressed"), "true");
+    assert.ok(!(await labels("log-chart")).some((l) => /^wk /.test(l)));
+    await page.waitForFunction(() => window.__saved.some((d) => JSON.parse(d).axis === "dates"));
+    // A long plan (2 years) uses month labels.
+    await page.click("#tab-plan");
+    await set(page, "#w", 260); await set(page, "#g", 160); await set(page, "#rate", 0.75);
+    const long = await labels("chart");
+    assert.ok(long.filter((l) => /^[A-Z][a-z]{2}/.test(l)).length >= 3, long.join(","));
+  }));
+
+  await test("light and dark mode: top-bar button, Settings choice, remembered", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
+    const page = await ctx.newPage();
+    await page.goto(process.env.WMX_SITE_URL || PAGE);
+    await page.waitForFunction(() => document.getElementById("head").textContent.length > 0);
+    const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const light = await bg();
+    assert.strictEqual(await page.getAttribute("#theme-btn", "aria-label"), "Switch to dark mode");
+    await page.click("#theme-btn");
+    assert.strictEqual(await page.getAttribute("html", "data-theme"), "dark");
+    assert.notStrictEqual(await bg(), light, "dark background applied");
+    assert.strictEqual(await page.getAttribute("#theme-btn", "aria-label"), "Switch to light mode");
+    await page.reload();
+    await page.waitForFunction(() => document.getElementById("head").textContent.length > 0);
+    assert.strictEqual(await page.getAttribute("html", "data-theme"), "dark", "choice remembered");
+    await page.click("#tab-settings");
+    assert.strictEqual(await page.getAttribute("[data-theme-choice=dark]", "aria-pressed"), "true");
+    await page.click("[data-theme-choice=system]");
+    assert.strictEqual(await page.getAttribute("html", "data-theme"), null);
+    assert.strictEqual(await bg(), light, "system follows the light device setting");
+    // System follows the device when it switches to dark.
+    await page.emulateMedia({ colorScheme: "dark" });
+    assert.notStrictEqual(await bg(), light);
+    await page.waitForFunction(() => document.getElementById("theme-btn").getAttribute("aria-label") === "Switch to light mode");
+    await page.click("[data-theme-choice=light]");
+    assert.strictEqual(await bg(), light, "Light overrides a dark device");
+    await ctx.close();
   });
 
   await test("web version: saves in the browser, hides updates, exports and imports", async () => {

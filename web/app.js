@@ -28,7 +28,7 @@
     const v = parseFloat($("floor").value);
     return v >= MIN_FLOOR && v <= MAX_FLOOR ? Math.round(v) : standardFloor(sex);
   }
-  const data = { schema: 1, units: "imp", mode: "pace", profile: {}, log: [] };
+  const data = { schema: 1, units: "imp", mode: "pace", axis: "weeks", theme: "system", profile: {}, log: [] };
   let view = "plan";
   let showAllLog = false;
   let lastSim = null;
@@ -82,6 +82,8 @@
     if (doc && typeof doc === "object" && !Array.isArray(doc)) {
       if (doc.units === "met" || doc.units === "imp") setUnits(doc.units, false);
       if (doc.mode === "date" || doc.mode === "pace") setMode(doc.mode);
+      if (doc.axis === "weeks" || doc.axis === "dates") setAxis(doc.axis);
+      if (["system", "light", "dark"].includes(doc.theme)) setTheme(doc.theme);
       if (doc.profile) FIELDS.forEach((f) => { if (doc.profile[f] != null && doc.profile[f] !== "") $(f).value = doc.profile[f]; });
       if (Array.isArray(doc.log)) data.log = doc.log.filter((e) => e && parseISO(e.d) && e.kg > 20 && e.kg < 400);
     }
@@ -113,6 +115,30 @@
     if (u === "imp") { r.min = 0.25; r.max = 2; r.step = 0.25; } else { r.min = 0.1; r.max = 1; r.step = 0.05; }
     // Set the value after the new range so the slider doesn't snap it to the old steps.
     if (convertedRate != null) r.value = convertedRate;
+  }
+  // Appearance: "system" follows the device; "light"/"dark" override it.
+  const ICONS = {
+    sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  };
+  const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  const showingDark = () => data.theme === "dark" || (data.theme === "system" && !!(darkQuery && darkQuery.matches));
+  function setTheme(t) {
+    data.theme = t;
+    if (t === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    document.querySelectorAll("[data-theme-choice]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.themeChoice === t));
+    const next = showingDark() ? "light" : "dark";
+    const btn = $("theme-btn");
+    btn.innerHTML = next === "light" ? ICONS.sun : ICONS.moon;
+    btn.setAttribute("aria-label", `Switch to ${next} mode`);
+    btn.title = `Switch to ${next} mode`;
+  }
+
+  // Charts label the time axis in weeks from the plan start, or in calendar dates.
+  function setAxis(a) {
+    data.axis = a;
+    document.querySelectorAll(".axis-toggle button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.axis === a));
   }
   function setMode(m) {
     data.mode = m;
@@ -303,13 +329,33 @@
     const x = (v) => m.l + (v / maxX) * (W - m.l - m.r);
     const y = (v) => m.t + (1 - (v - yMin) / (yMax - yMin)) * (H - m.t - m.b);
     const yStep = niceStep((yMax - yMin) / 4);
-    const xStep = Math.max(1, niceStep(maxX / Math.max(2, Math.floor((W - m.l - m.r) / 80))));
+    const ticks = xTicks(maxX, W - m.l - m.r, startDate());
     let s = "";
     for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax; v += yStep) {
       s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/>`;
       s += `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${+v.toFixed(1)}</text>`;
     }
-    for (let v = 0; v <= maxX + 1e-9; v += xStep) s += `<text x="${x(v)}" y="${H - 8}" text-anchor="middle">${v === 0 ? "start" : "wk " + v}</text>`;
+    // Labels near the ends are anchored inwards so they stay inside the chart; a
+    // label that would touch its neighbour is left out (the first and last always show).
+    const CH = 6.7; // approximate width of one 11px monospace character
+    const placed = ticks.map((t) => {
+      const px = x(t.v), w = t.label.length * CH;
+      const anchor = px - m.l < w / 2 ? "start" : W - m.r - px < w / 2 ? "end" : "middle";
+      const left = anchor === "start" ? px : anchor === "end" ? px - w : px - w / 2;
+      return { ...t, px, anchor, left, right: left + w };
+    });
+    const keep = [];
+    for (const t of placed) if (!keep.length || t.left >= keep[keep.length - 1].right + 8) keep.push(t);
+    // Always show the last tick: drop kept labels it would touch.
+    const last = placed[placed.length - 1];
+    if (last && keep[keep.length - 1] !== last) {
+      while (keep.length > 1 && keep[keep.length - 1].right + 8 > last.left) keep.pop();
+      keep.push(last);
+    }
+    keep.forEach((t) => {
+      if (data.axis === "dates") s += `<line x1="${t.px}" x2="${t.px}" y1="${H - m.b}" y2="${H - m.b + 4}" stroke="var(--line)"/>`;
+      s += `<text x="${t.px}" y="${H - 8}" text-anchor="${t.anchor}">${t.label}</text>`;
+    });
     s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(goalY)}" y2="${y(goalY)}" stroke="var(--good)" stroke-dasharray="4 4"/>`;
     s += `<text x="${m.l + 8}" y="${y(goalY) + (goalY < startY ? 16 : -6)}" style="fill:var(--good)">goal ${goalY.toFixed(1)} ${wUnit()}</text>`;
     if (plan.length) {
@@ -326,6 +372,40 @@
       actual.forEach((p) => (s += `<circle cx="${x(p.x)}" cy="${y(p.y)}" r="3.5" fill="var(--surface)" stroke="var(--fg)" stroke-width="2"/>`));
     }
     svg.innerHTML = s;
+  }
+
+  // Time-axis ticks: weeks since the start, or calendar dates spaced so the
+  // labels fit (weekly, every few weeks, or at month starts).
+  function xTicks(maxX, plotW, start) {
+    const room = Math.max(2, Math.floor(plotW / (data.axis === "dates" ? 80 : 70)));
+    if (data.axis !== "dates") {
+      const step = Math.max(1, niceStep(maxX / room));
+      const out = [];
+      for (let v = 0; v <= maxX + 1e-9; v += step) out.push({ v, label: v === 0 ? "start" : "wk " + v });
+      return out;
+    }
+    const days = maxX * 7;
+    const md = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    for (const stepDays of [7, 14, 21, 28]) {
+      if (days / stepDays + 1 <= room) {
+        const out = [];
+        for (let d = 0; d <= days + 1e-6; d += stepDays) out.push({ v: d / 7, label: md(addDays(start, d)) });
+        return out;
+      }
+    }
+    // Month starts, every 1, 2, 3, 6 or 12 months.
+    const end = addDays(start, Math.round(days));
+    for (const every of [1, 2, 3, 6, 12]) {
+      const out = [];
+      const d = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+      while (d.getMonth() % every) d.setMonth(d.getMonth() + 1);
+      for (; d <= end; d.setMonth(d.getMonth() + every)) {
+        const first = !out.length || d.getMonth() === 0;
+        out.push({ v: (d - start) / (7 * 864e5), label: d.toLocaleDateString(undefined, first ? { month: "short", year: "2-digit" } : { month: "short" }) });
+      }
+      if (out.length <= room) return out.length ? out : [{ v: 0, label: md(start) }];
+    }
+    return [{ v: 0, label: md(start) }];
   }
 
   function renderBmi(now, goal) {
@@ -581,6 +661,11 @@
     $("form").addEventListener("input", () => { render(); scheduleSave(); });
     $("form").addEventListener("submit", (e) => e.preventDefault());
     $("macro").addEventListener("change", () => { render(); scheduleSave(); });
+    setTheme(data.theme);
+    $("theme-btn").onclick = () => { setTheme(showingDark() ? "light" : "dark"); saveNow(); };
+    document.querySelectorAll("[data-theme-choice]").forEach((b) => (b.onclick = () => { setTheme(b.dataset.themeChoice); saveNow(); }));
+    if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", () => setTheme(data.theme));
+    document.querySelectorAll(".axis-toggle button").forEach((b) => (b.onclick = () => { setAxis(b.dataset.axis); render(); scheduleSave(); }));
     $("log-form").addEventListener("submit", addWeighIn);
     $("log-list").addEventListener("click", (e) => {
       const d = e.target.dataset && e.target.dataset.d;
