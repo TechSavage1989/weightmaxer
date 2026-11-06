@@ -12,12 +12,18 @@ import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# The website's public address (custom domain set in Settings › Pages).
+SITE_URL = 'https://weightmaxer.techsavage3d.com/'
 HEAD_EXTRA = (
     '<meta name="description" content="Plan how long it takes to lose or gain weight, '
     'your daily calories and macros, and track your weigh-ins. Runs in your browser; your data stays on your device.">\n'
     '<meta name="theme-color" content="#0e6f7a">\n'
     '<link rel="icon" type="image/png" href="icon.png">\n'
     '<link rel="apple-touch-icon" href="icon.png">\n'
+    f'<link rel="canonical" href="{SITE_URL}">\n'
+    '<meta property="og:title" content="Weightmaxer">\n'
+    f'<meta property="og:url" content="{SITE_URL}">\n'
+    f'<meta property="og:image" content="{SITE_URL}icon.png">\n'
 )
 
 

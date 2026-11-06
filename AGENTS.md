@@ -8,7 +8,7 @@ this file; keep project rules here, not in per-tool files.
 
 A portable Windows desktop app (Go + WebView2) for planning weight loss or gain,
 calorie and macro targets, and a weigh-in log, plus the same interface as a
-website on GitHub Pages (https://techsavage1989.github.io/weightmaxer/). One
+website on GitHub Pages at https://weightmaxer.techsavage3d.com/. One
 public repository holds the source, the releases and the website; the app's
 update checker reads this repository's GitHub releases without signing in.
 
@@ -74,6 +74,11 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
 - Web mode stores the whole document in `localStorage["weightmaxer-data"]`. Keep the
   saved document format compatible with the desktop `data.json`, so an export from one
   imports into the other. Never add analytics, third-party scripts or remote fonts.
+- The custom domain `weightmaxer.techsavage3d.com` is a CNAME to `techsavage1989.github.io`
+  (DNS managed by the owner) and is set in Settings › Pages › Custom domain. Deployments
+  from Actions ignore a `CNAME` file, so don't add one. `SITE_URL` in `scripts/build_site.py`
+  must match it. Changing the domain again strands every visitor's browser-stored data at
+  the old address (storage is per origin); warn users to export first.
 - Website-only changes don't need a `VERSION` bump. A change that alters the Windows
   app's behaviour does.
 

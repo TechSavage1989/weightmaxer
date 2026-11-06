@@ -22,6 +22,8 @@ class SiteTests(unittest.TestCase):
             self.assertEqual(re.findall(r'<script[^>]+src=', html), [])
             self.assertEqual(re.findall(r'<link[^>]+stylesheet[^>]+https?:', html), [])
             self.assertIn('const desktop = host.has("wmxLoad")', html)
+            self.assertIn(f'<link rel="canonical" href="{build_site.SITE_URL}">', html)
+            self.assertTrue(build_site.SITE_URL.startswith('https://') and build_site.SITE_URL.endswith('/'))
 
 
 if __name__ == '__main__':
