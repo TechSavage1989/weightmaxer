@@ -15,7 +15,7 @@
 
 ## Features
 
-Weightmaxer is a small Windows app, also available as a [web version](https://techsavage1989.github.io/weightmaxer/), for anyone planning a weight change. Enter your sex, age, height, weight, goal and activity level, and it works out a realistic timeline and daily calories, then helps you stay on track.
+Weightmaxer is a small Windows app, also available as a [web version](https://weightmaxer.techsavage3d.com/), for anyone planning a weight change. Enter your sex, age, height, weight, goal and activity level, and it works out a realistic timeline and daily calories, then helps you stay on track.
 
 - **Lose or gain weight.** Set a goal below or above your starting weight. Plan by weekly pace or by a target date.
 - **Daily calories that adjust.** Your target changes as your weight changes, shown week by week in a calorie schedule.
@@ -49,7 +49,7 @@ Get **`Weightmaxer-win-x64.zip`** from the [latest release](https://github.com/T
 
 All versions, including any preview builds, are on the [releases page](https://github.com/TechSavage1989/weightmaxer/releases).
 
-**No install needed:** the [web version](https://techsavage1989.github.io/weightmaxer/) has the same planner, macros and weigh-in log in any modern browser, on phones as well as computers. It saves your data in that browser only; use **Settings › Export data** to keep a copy or move it to another device.
+**No install needed:** the [web version](https://weightmaxer.techsavage3d.com/) has the same planner, macros and weigh-in log in any modern browser, on phones as well as computers. It saves your data in that browser only; use **Settings › Export data** to keep a copy or move it to another device.
 
 ## Requirements
 
@@ -107,7 +107,7 @@ A matching checksum shows the file is the one published in this repository's rel
 
 Updating never touches your data. Release history is in [`docs/releases/`](docs/releases/).
 
-The web version stores the same data in the browser's local storage for `techsavage1989.github.io`. It is redeployed automatically whenever a change reaches `main` and all checks pass.
+The web version stores the same data in the browser's local storage for `weightmaxer.techsavage3d.com`. If you used it at its earlier address (`techsavage1989.github.io/weightmaxer`), your data stayed with that address: export it there and import it here. It is redeployed automatically whenever a change reaches `main` and all checks pass.
 
 ## Troubleshooting
 

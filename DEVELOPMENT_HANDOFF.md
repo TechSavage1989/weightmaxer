@@ -12,7 +12,8 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   `README.txt`, `THIRD_PARTY_NOTICES.txt`) and `SHA256SUMS.txt`.
 - **Platform:** Windows 10/11 x64 with the WebView2 Runtime. Built by cross-compiling
   with Go; no C toolchain.
-- **Website:** https://techsavage1989.github.io/weightmaxer/, the same `web/` interface in
+- **Website:** https://weightmaxer.techsavage3d.com/ (custom domain; the old
+  `techsavage1989.github.io/weightmaxer/` address redirects to it), the same `web/` interface in
   web mode (browser storage, export/import, no updater), deployed by the `pages` CI job
   on every push to `main` after all checks pass.
 
@@ -51,7 +52,7 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   the engine WebView2 uses, not from a screenshot of the Windows window.
 - No manual testing on a Windows 10 or 11 desktop has been done yet. Windows checks run
   on GitHub's hosted Windows Server runner.
-- Web version data lives only in one browser's storage for `techsavage1989.github.io`;
+- Web version data lives only in one browser's storage for `weightmaxer.techsavage3d.com`;
   users must export to back it up or move it. Private windows lose it on close.
 
 ## Documentation
@@ -87,7 +88,7 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 - Windows CI on GitHub's hosted runner passed the release exe self-test (visible WebView2
   window), the 0.9.0 → 0.9.1 end-to-end update with relaunch, cleanup, one backup and
   preserved data, the tampered-checksum rejection and the rollback. The update from a
-  published release to a newer published release will first happen with 1.0.1.
+  published release to a newer published release first happens with 1.1.0.
 
 ### 2026-11-05: website on GitHub Pages
 
@@ -120,3 +121,19 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 - Released as `VERSION` 1.1.0, the first update installed copies of 1.0.0 are offered.
 - Approval: the owner wrote "permission granted to merge" for this change, which publishes
   the 1.1.0 release through CI. PR #4 (custom domain) is separate and waits for the domain.
+- Results: merged as TechSavage1989/weightmaxer#5 (merge commit `eceb800`); CI published
+  `v1.1.0` (latest; `v1.0.0` unchanged). `Weightmaxer-win-x64.zip` SHA-256
+  `3760ab6387f88d98a9f68848e5d03236f08b192b451c0dfa25f6d6e9638f87e0` matched
+  `SHA256SUMS.txt` and a local rebuild of `main`, and `wmxtool feedcheck --expect 1.1.0`
+  passed against the live feed. The website redeployed in the same run.
+
+### 2026-11-06: custom domain for the website
+
+- Requested: serve the website from the owner's domain. Chosen: `weightmaxer.techsavage3d.com`
+  (a subdomain, because techsavage3d.com already hosts another website).
+- Owner's part: DNS CNAME `weightmaxer` → `techsavage1989.github.io`, the custom domain in
+  Settings › Pages, Enforce HTTPS, and optionally domain verification in account settings.
+- Repository part: links, `SITE_URL` canonical/Open Graph metadata in `scripts/build_site.py`,
+  docs. Merged only after the domain served the site. Same approvals as above.
+- Data saved by the web version at the old github.io address stays there; users export it
+  there and import it at the new address.
