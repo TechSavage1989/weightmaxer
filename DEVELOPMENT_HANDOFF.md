@@ -121,6 +121,11 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 - Released as `VERSION` 1.1.0, the first update installed copies of 1.0.0 are offered.
 - Approval: the owner wrote "permission granted to merge" for this change, which publishes
   the 1.1.0 release through CI. PR #4 (custom domain) is separate and waits for the domain.
+- Results: merged as TechSavage1989/weightmaxer#5 (merge commit `eceb800`); CI published
+  `v1.1.0` (latest; `v1.0.0` unchanged). `Weightmaxer-win-x64.zip` SHA-256
+  `3760ab6387f88d98a9f68848e5d03236f08b192b451c0dfa25f6d6e9638f87e0` matched
+  `SHA256SUMS.txt` and a local rebuild of `main`, and `wmxtool feedcheck --expect 1.1.0`
+  passed against the live feed. The website redeployed in the same run.
 
 ### 2026-11-06: custom domain for the website
 
