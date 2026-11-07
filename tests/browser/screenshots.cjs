@@ -38,6 +38,14 @@ async function page(browser, doc, upd) {
   p = await page(browser, sample, idle);
   await p.click("#tab-log");
   await p.waitForTimeout(200);
+  // Show the chart readout on the latest weigh-in.
+  const pt = await p.evaluate(() => {
+    const svg = document.getElementById("log-chart"), c = svg._chart, r = svg.getBoundingClientRect();
+    const last = c.actual[c.actual.length - 1];
+    return { x: r.left + (c.x(last.x) / c.W) * r.width, y: r.top + r.height / 2 };
+  });
+  await p.mouse.move(pt.x, pt.y);
+  await p.waitForTimeout(100);
   await p.screenshot({ path: path.join(OUT, "weigh-ins.png") });
   await p.close();
 

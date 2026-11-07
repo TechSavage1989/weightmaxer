@@ -288,6 +288,74 @@ const base = { current: "1.0.0", latest: "1.1.0", dev: false, check: { kind: "av
     assert.ok(long.filter((l) => /^[A-Z][a-z]{2}/.test(l)).length >= 3, long.join(","));
   }));
 
+  await test("pointing at a chart shows the date and weight there", async () => {
+    for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      const ctx = await browser.newContext({ viewport: vp, hasTouch: vp.width < 500 });
+      const page = await ctx.newPage();
+      await page.addInitScript(() => {
+        window.wmxLoad = () => JSON.stringify({ units: "imp", profile: { sex: "f", age: "38", hft: "5", hin: "6", w: "196", g: "165", act: "1.375", rate: "1", start: "2026-09-07" },
+          log: [{ d: "2026-10-05", kg: 192.0 * 0.45359237 }] });
+        window.wmxSave = () => {}; window.wmxReady = () => {};
+      });
+      await page.goto(PAGE);
+      await page.waitForFunction(() => document.getElementById("chart").innerHTML.length > 0);
+      // Point at week 4 (day 28): the readout shows Oct 5, 2026 and the schedule's week-4 weight.
+      const pointAt = (id, day) => page.evaluate(([id, day]) => {
+        const svg = document.getElementById(id), c = svg._chart;
+        svg.scrollIntoView({ block: "center" });
+        const r = svg.getBoundingClientRect();
+        return { x: r.left + (c.x(day / 7) / c.W) * r.width, y: r.top + r.height / 2 };
+      }, [id, day]);
+      let pt = await pointAt("chart", 28);
+      await page.mouse.move(pt.x, pt.y);
+      const tip = page.locator("#view-plan .chart-tip");
+      await tip.waitFor({ state: "visible" });
+      const text = await tip.textContent();
+      assert.match(text, /Oct 5, 2026/, text);
+      assert.match(text, /Week 4/, text);
+      const week4 = await page.$$eval("#table tbody tr", (rows) => rows.find((r) => r.cells[0].textContent === "4").cells[2].textContent);
+      assert.ok(text.includes(week4.trim()), `${text} should include ${week4}`);
+      // The readout stays inside the chart, also at the far right.
+      const lastDay = await page.evaluate(() => Math.round(document.getElementById("chart")._chart.maxX * 7));
+      for (const day of [0, 28, lastDay]) {
+        pt = await pointAt("chart", day);
+        if (vp.width < 500) await page.touchscreen.tap(pt.x - (day === lastDay ? 1 : 0), pt.y);
+        else await page.mouse.move(pt.x - (day === lastDay ? 1 : 0), pt.y);
+        await tip.waitFor({ state: "visible" });
+        const [b, t] = await page.evaluate(() => [document.querySelector("#view-plan .chart-box").getBoundingClientRect().toJSON(), document.querySelector("#view-plan .chart-tip").getBoundingClientRect().toJSON()]);
+        assert.ok(t.left >= b.left - 0.5 && t.right <= b.right + 0.5, `readout outside the chart at day ${day}`);
+      }
+      // Leaving the chart hides it (mouse).
+      await page.mouse.move(2, 2);
+      if (vp.width >= 500) assert.ok(await tip.isHidden(), "hidden after leaving");
+      // Weigh-ins chart: the weigh-in near the pointer is listed.
+      await page.click("#tab-log");
+      await page.waitForFunction(() => document.getElementById("log-chart")._chart);
+      pt = await pointAt("log-chart", 28);
+      if (vp.width < 500) await page.touchscreen.tap(pt.x, pt.y); else await page.mouse.move(pt.x, pt.y);
+      const logTip = page.locator("#view-log .chart-tip");
+      await logTip.waitFor({ state: "visible" });
+      assert.match(await logTip.textContent(), /Weighed192\.0 lb/);
+      await ctx.close();
+    }
+  });
+
+  await test("chart readout works with the keyboard", () => withPage(browser, {}, async (page) => {
+    await page.focus("#chart");
+    const tip = page.locator("#view-plan .chart-tip");
+    await tip.waitFor({ state: "visible" });
+    assert.match(await tip.textContent(), /Plan start/);
+    await page.keyboard.press("ArrowRight");
+    assert.match(await tip.textContent(), /Week 1/);
+    await page.keyboard.press("Shift+ArrowRight");
+    assert.match(await tip.textContent(), /Week 1\.1/);
+    await page.keyboard.press("End");
+    const end = await tip.textContent();
+    assert.ok(/Plan165\.0 lb/.test(end), end);
+    await page.keyboard.press("Escape");
+    assert.ok(await tip.isHidden());
+  }));
+
   await test("light and dark mode: top-bar button, Settings choice, remembered", async () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
     const page = await ctx.newPage();
