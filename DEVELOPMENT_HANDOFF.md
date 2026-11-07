@@ -145,5 +145,5 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 - Delivered: hover/touch/keyboard readout on both charts (date, week, planned weight,
   nearby weigh-in), tests for mouse, touch, keyboard, values matching the schedule and the
   readout staying inside the chart; weigh-ins screenshot shows it.
-- Release `VERSION` 1.2.0. Publishing needs the owner's approval for this task; it was asked
-  before merging.
+- Release `VERSION` 1.2.0. The owner approved the merge ("merge") and gave a standing
+  instruction: merging and releasing no longer need asking (recorded in AGENTS.md).
