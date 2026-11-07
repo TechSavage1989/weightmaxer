@@ -60,8 +60,12 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
 - Release asset names, `Weightmaxer.exe` inside the zip, the identity marker
   format (`internal/version`) and the API path are an update contract with every
   installed copy. Changing them breaks updates for existing users.
-- Approvals to push, merge or release are per task. Record them in the handoff
-  as history; they don't carry over to later tasks.
+- Owner's standing instruction (2026-11-07): permission to merge and release is always
+  granted. Push work to a short-lived branch, open the pull request, merge it once every
+  required check is green, and let CI publish the release when `VERSION` changed, then
+  verify the published assets and the website. Don't ask first. This doesn't cover
+  replacing an existing release or its assets, rewriting history, changing repository
+  visibility or access, or merging with a failed or pending check.
 
 ## Website
 
