@@ -23,6 +23,7 @@ Weightmaxer is a small Windows app, also available as a [web version](https://we
 - **Macro targets.** Daily protein, fat and carbohydrate in grams for Balanced, Lower carb or Lower fat eating, plus a fibre target.
 - **Weigh-in log.** Record your weight and see it plotted against the plan, with how far ahead or behind you are.
 - **Weeks or dates.** Show the charts by week number or by calendar date.
+- **Read any point.** Point at a chart to see the date, the planned weight and any weigh-in there.
 - **Light and dark mode.** Follow your device, or pick light or dark.
 - **Safety warnings.** Weightmaxer flags paces faster than 1% of body weight per week, and goals in the underweight or obese range.
 - **Private.** Your data stays on your device. The Windows app's only network request is the update check to GitHub; the web version sends nothing anywhere after the page loads.
@@ -31,7 +32,7 @@ The numbers are estimates (Mifflin–St Jeor and about 3,500 kcal per pound), no
 
 ## Screenshots
 
-**Track weigh-ins against your plan**
+**Track weigh-ins against your plan, and point at the chart for any date**
 
 <img src="docs/images/weigh-ins.png" width="900" alt="Weigh-ins view with nine entries plotted against the planned weight line">
 
@@ -72,6 +73,7 @@ Automated tests run on GitHub's Windows Server machines. Testing by hand on Wind
 **Plan.** Fill in **About you** with your sex, age, height, starting weight, goal weight and activity level. Choose **lb / ft** or **kg / cm** at the top of the form.
 - **Plan by › Pace** sets how much to lose or gain each week. **Target date** works out the pace from a date instead.
 - **Lowest daily calories** is optional. Leave it empty for the standard minimum, or enter 800 kcal or more. Values below the standard minimum show a warning; eat that little only with a doctor's supervision.
+- Point at a chart (or touch and drag on a phone) to see the date and the planned weight at that spot; on the **Weigh-ins** chart it also shows a weigh-in within 3 days. After clicking a chart, **←** and **→** move a week at a time, **Shift** with an arrow moves a day, **Home** and **End** jump to the start and end, and **Esc** closes the readout.
 - Above each chart, **Weeks / Dates** switches the time axis between week numbers and calendar dates. The choice applies to both charts.
 - The results show your goal date, what to eat now, maintenance calories and your daily deficit or surplus. Below them are the weight chart, your BMI, **Daily macros** (pick a diet style in the card) and the week-by-week **Calorie schedule**.
 

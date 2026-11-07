@@ -371,8 +371,94 @@
       s += `<path d="${line}" fill="none" stroke="var(--fg)" stroke-width="2" stroke-linejoin="round"/>`;
       actual.forEach((p) => (s += `<circle cx="${x(p.x)}" cy="${y(p.y)}" r="3.5" fill="var(--surface)" stroke="var(--fg)" stroke-width="2"/>`));
     }
+    // Hover marker (positioned by showHover), drawn last so it sits on top.
+    s += `<g class="hover" visibility="hidden"><line class="hv-line" y1="${m.t}" y2="${H - m.b}"/><circle class="hv-plan" r="5"/><circle class="hv-act" r="6"/></g>`;
     svg.innerHTML = s;
+    svg._chart = { x, y, m, W, H, maxX, plan, actual, start: startDate() };
+    if (svg._hoverDay != null) showHover(svg, svg._hoverDay);
   }
+
+  // ---------- chart hover readout ----------
+  // Pointing at a chart (mouse, finger or arrow keys) shows the calendar date and
+  // the planned weight on that day, plus a weigh-in within 3 days on the log chart.
+  function planAt(plan, v) {
+    if (!plan.length) return null;
+    if (v <= plan[0].x) return plan[0].y;
+    for (let i = 1; i < plan.length; i++) {
+      const a = plan[i - 1], b = plan[i];
+      if (v <= b.x) return a.y + ((b.y - a.y) * (v - a.x)) / (b.x - a.x || 1);
+    }
+    return plan[plan.length - 1].y;
+  }
+  function showHover(svg, day) {
+    const c = svg._chart, tip = svg.parentElement.querySelector(".chart-tip"), g = svg.querySelector(".hover");
+    if (!c || !g) return;
+    day = Math.max(0, Math.min(Math.round(c.maxX * 7), Math.round(day)));
+    svg._hoverDay = day;
+    const v = day / 7, px = c.x(v);
+    const planned = c.plan.length && v <= c.plan[c.plan.length - 1].x + 1e-9 ? planAt(c.plan, v) : null;
+    let near = null;
+    for (const p of c.actual) if (Math.abs(p.x - v) <= 3 / 7 && (!near || Math.abs(p.x - v) < Math.abs(near.x - v))) near = p;
+    g.setAttribute("visibility", "visible");
+    g.querySelector(".hv-line").setAttribute("x1", px);
+    g.querySelector(".hv-line").setAttribute("x2", px);
+    const pd = g.querySelector(".hv-plan"), ad = g.querySelector(".hv-act");
+    pd.setAttribute("visibility", planned == null ? "hidden" : "visible");
+    if (planned != null) { pd.setAttribute("cx", px); pd.setAttribute("cy", c.y(planned)); }
+    ad.setAttribute("visibility", near ? "visible" : "hidden");
+    if (near) { ad.setAttribute("cx", c.x(near.x)); ad.setAttribute("cy", c.y(near.y)); }
+    const date = addDays(c.start, day);
+    const long = (d) => d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+    const wk = day % 7 === 0 ? `week ${day / 7}` : `week ${(day / 7).toFixed(1)}`;
+    let html = `<div class="tip-date">${long(date)}</div><div class="tip-week">${day === 0 ? "Plan start" : wk[0].toUpperCase() + wk.slice(1)}</div>`;
+    if (planned != null) html += `<div class="tip-row"><span>Plan</span><span>${planned.toFixed(1)} ${wUnit()}</span></div>`;
+    if (near) {
+      const nd = parseISO(near.d);
+      const when = Math.round((nd - date) / 864e5) === 0 ? "Weighed" : `Weighed ${nd.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+      html += `<div class="tip-row"><span>${when}</span><span>${near.y.toFixed(1)} ${wUnit()}</span></div>`;
+    }
+    tip.innerHTML = html;
+    tip.hidden = false;
+    // Sit beside the guide line, flipping to the other side near the right edge.
+    const tw = tip.offsetWidth, box = svg.clientWidth;
+    let left = px + 12;
+    if (left + tw > box) left = px - 12 - tw;
+    tip.style.left = `${Math.max(0, Math.min(left, box - tw))}px`;
+  }
+  function hideHover(svg) {
+    svg._hoverDay = null;
+    const g = svg.querySelector(".hover"), tip = svg.parentElement.querySelector(".chart-tip");
+    if (g) g.setAttribute("visibility", "hidden");
+    if (tip) tip.hidden = true;
+  }
+  function attachHover(svg) {
+    const dayAt = (ev) => {
+      const c = svg._chart;
+      if (!c) return null;
+      const r = svg.getBoundingClientRect();
+      const px = ((ev.clientX - r.left) / r.width) * c.W;
+      const v = ((px - c.m.l) / (c.W - c.m.l - c.m.r)) * c.maxX;
+      return v * 7;
+    };
+    svg.addEventListener("pointermove", (ev) => { const d = dayAt(ev); if (d != null) showHover(svg, d); });
+    svg.addEventListener("pointerdown", (ev) => { const d = dayAt(ev); if (d != null) showHover(svg, d); });
+    svg.addEventListener("pointerleave", (ev) => { if (ev.pointerType === "mouse" && document.activeElement !== svg) hideHover(svg); });
+    svg.addEventListener("blur", () => hideHover(svg));
+    svg.addEventListener("keydown", (ev) => {
+      const c = svg._chart;
+      if (!c) return;
+      const cur = svg._hoverDay == null ? 0 : svg._hoverDay, last = Math.round(c.maxX * 7);
+      const step = ev.shiftKey ? 1 : 7;
+      const next = { ArrowRight: cur + step, ArrowLeft: cur - step, Home: 0, End: last }[ev.key];
+      if (next != null) { ev.preventDefault(); showHover(svg, next); }
+      else if (ev.key === "Escape") hideHover(svg);
+    });
+    svg.addEventListener("focus", () => { if (svg._hoverDay == null) showHover(svg, 0); });
+  }
+  // Tapping elsewhere on a phone clears a readout left by a finger.
+  document.addEventListener("pointerdown", (ev) => {
+    document.querySelectorAll(".chart").forEach((svg) => { if (!svg.contains(ev.target) && document.activeElement !== svg) hideHover(svg); });
+  });
 
   // Time-axis ticks: weeks since the start, or calendar dates spaced so the
   // labels fit (weekly, every few weeks, or at month starts).
@@ -454,7 +540,7 @@
     const entries = [...data.log].sort((a, b) => (a.d < b.d ? -1 : 1));
     const s = startDate();
     const plan = lastSim ? lastSim.sim.weeks.map((w) => ({ x: w.week, y: fromKg(w.kg) })) : [];
-    const actual = entries.map((e) => ({ x: Math.max(0, (parseISO(e.d) - s) / (7 * 864e5)), y: fromKg(e.kg) }));
+    const actual = entries.map((e) => ({ x: Math.max(0, (parseISO(e.d) - s) / (7 * 864e5)), y: fromKg(e.kg), d: e.d }));
     if (!entries.length) {
       $("log-head").textContent = "No weigh-ins yet";
       $("log-sub").textContent = "Add your first one on the left to compare your progress with the plan.";
@@ -661,6 +747,8 @@
     $("form").addEventListener("input", () => { render(); scheduleSave(); });
     $("form").addEventListener("submit", (e) => e.preventDefault());
     $("macro").addEventListener("change", () => { render(); scheduleSave(); });
+    attachHover($("chart"));
+    attachHover($("log-chart"));
     setTheme(data.theme);
     $("theme-btn").onclick = () => { setTheme(showingDark() ? "light" : "dark"); saveNow(); };
     document.querySelectorAll("[data-theme-choice]").forEach((b) => (b.onclick = () => { setTheme(b.dataset.themeChoice); saveNow(); }));

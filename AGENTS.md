@@ -112,6 +112,10 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
   choice before first paint. Don't add colours outside the tokens.
 - Chart time labels go through `xTicks` and the collision filter in `drawChart`; the first
   and last labels always show. The overlap test runs in both Weeks and Dates modes.
+- Chart readout: `drawChart` stores its scales on `svg._chart` and draws a hidden `.hover`
+  group; `showHover` positions it and the `.chart-tip` box (inside `.chart-box`) for a day
+  number. Pointer, touch and keyboard events go through `attachHover`. Keep the readout
+  inside the chart box and the plan value equal to the schedule (both tested).
 - The page scrolls as a whole. Don't add nested vertical scroll areas; the
   browser test fails on them.
 - Screenshots use fictional data only and must be recaptured in the same pull

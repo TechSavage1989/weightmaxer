@@ -4,7 +4,7 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 
 ## Current state
 
-- **Version:** 1.1.0, from `VERSION` (1.0.0 was the first release).
+- **Version:** 1.2.0, from `VERSION` (1.0.0 was the first release).
 - **Repository and update feed:** `TechSavage1989/weightmaxer` (public). Source and
   releases live here; installed copies read
   `https://api.github.com/repos/TechSavage1989/weightmaxer/releases/latest`.
@@ -137,3 +137,13 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   docs. Merged only after the domain served the site. Same approvals as above.
 - Data saved by the web version at the old github.io address stays there; users export it
   there and import it at the new address.
+
+### 2026-11-07: 1.2.0 (chart readout)
+
+- Requested: pointing at the weight chart shows the weight and the actual date at that point,
+  on the website and in the Windows app.
+- Delivered: hover/touch/keyboard readout on both charts (date, week, planned weight,
+  nearby weigh-in), tests for mouse, touch, keyboard, values matching the schedule and the
+  readout staying inside the chart; weigh-ins screenshot shows it.
+- Release `VERSION` 1.2.0. Publishing needs the owner's approval for this task; it was asked
+  before merging.

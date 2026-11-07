@@ -121,7 +121,7 @@
             <h2>Weight over time</h2>
             <div class="seg axis-toggle" role="group" aria-label="Chart axis"><button type="button" data-axis="weeks" aria-pressed="true">Weeks</button><button type="button" data-axis="dates" aria-pressed="false">Dates</button></div>
           </div>
-          <svg id="chart" class="chart" role="img" aria-label="Projected weight over time"></svg>
+          <div class="chart-box"><svg id="chart" class="chart" role="img" tabindex="0" aria-label="Projected weight over time. Point at the chart, or use the arrow keys, to read the weight on a date."></svg><div class="chart-tip" aria-live="polite" hidden></div></div>
         </div>
         <div class="card">
           <h2>Body mass index</h2>
@@ -183,7 +183,7 @@
             <span class="lbl">Chart</span>
             <div class="seg axis-toggle" role="group" aria-label="Chart axis"><button type="button" data-axis="weeks" aria-pressed="true">Weeks</button><button type="button" data-axis="dates" aria-pressed="false">Dates</button></div>
           </div>
-          <svg id="log-chart" class="chart" role="img" aria-label="Weigh-ins compared with the plan"></svg>
+          <div class="chart-box"><svg id="log-chart" class="chart" role="img" tabindex="0" aria-label="Weigh-ins compared with the plan. Point at the chart, or use the arrow keys, to read the weight on a date."></svg><div class="chart-tip" aria-live="polite" hidden></div></div>
           <div class="legend"><span class="key plan"></span>Plan <span class="key actual"></span>Your weigh-ins</div>
         </div>
         <div class="card">
