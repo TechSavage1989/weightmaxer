@@ -143,6 +143,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      pull-requests: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-go@v5
@@ -182,3 +183,19 @@ jobs:
           (cd published && sha256sum -c SHA256SUMS.txt)
           go run ./cmd/wmxtool verify-branded published/WeightMaxxer-win-x64.zip "$version"
           go run ./cmd/wmxtool feedcheck --expect "$version"
+      - name: Remove unchanged merged work branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '.[] | select(.merged_at != null and .base.ref == "main" and .head.repo.full_name == .base.repo.full_name) | [.head.ref, .head.sha] | @tsv' \
+            > merged-branches.tsv
+          while IFS=$'\t' read -r branch merged_head; do
+            case "$branch" in feat/*|fix/*|docs/*|chore/*|release/*) ;; *) continue ;; esac
+            if current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" --jq '.object.sha'); then
+              if [ "$current" = "$merged_head" ]; then
+                gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch"
+              fi
+            fi
+          done < merged-branches.tsv

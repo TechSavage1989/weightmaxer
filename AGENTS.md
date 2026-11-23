@@ -70,6 +70,10 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
   verify the published assets and the website. Don't ask first. This doesn't cover
   replacing an existing release or its assets, rewriting history, changing repository
   visibility or access, or merging with a failed or pending check.
+- After verifying published downloads, CI deletes same-repository merged work branches
+  only when their current head still equals the merged pull request's head. A branch
+  with new unmerged commits is retained. The public repository read permission for pull
+  requests lets the release job identify the exact merged branch.
 
 ## Website
 
