@@ -303,6 +303,21 @@ const statValue = (snapshot, label) => Number(snapshot.stats.find((s) => s.label
     assert.ok(positions.every((p) => p.y >= p.top && p.y <= p.bottom), "forecast weights fit within the chart's vertical scale");
   }));
 
+  await test("five-year forecast cutoff is not reported as goal completion", () => withPage(browser, forecastOpts(forecastDoc({ w: "300", rate: "0.1" }, [{ d: "2026-11-15", kg: 299 }])), async (page) => {
+    const limited = await forecast(page);
+    assert.match(limited.head, /beyond the five-year forecast/i);
+    assert.ok(!/^Lose .* by /.test(limited.head), "cutoff date must not be promised as a completion date");
+    assert.match(limited.goal, /before reaching your goal/i);
+    assert.ok(!/goal reached/i.test(limited.goal));
+    assert.ok(Number.parseFloat(limited.rows.at(-1)[2]) > 80, "the projection stops before reaching the chosen goal weight");
+    assert.strictEqual(await page.locator("#table .goal-row").count(), 0, "the cutoff is not styled as goal completion");
+    assert.strictEqual(statValue(limited, "After reaching goal"), 2682, "goal maintenance is based on 80 kg, not the much heavier cutoff weight");
+    await page.click("#tab-log");
+    const progress = await page.textContent("#log-sub");
+    assert.match(progress, /beyond the five-year forecast/i);
+    assert.ok(!/estimated goal|goal reached/i.test(progress), "log summary does not label the cutoff as the goal date");
+  }));
+
   await test("web forecasts survive reload and recalculate after compatible import", () => withPage(browser, forecastOpts(forecastDoc(), { web: true }), async (page) => {
     assert.strictEqual(await page.title(), "WeightMaxxer");
     await weigh(page, "2026-11-15", 88);
