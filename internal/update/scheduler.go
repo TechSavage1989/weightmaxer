@@ -62,7 +62,7 @@ func (p Policy) Decide(t Trigger, now time.Time, s SchedState, active bool) (boo
 		return false, "Already checking."
 	}
 	if now.Before(s.PauseUntil) {
-		return false, fmt.Sprintf("GitHub asked Weightmaxer to wait. Next check after %s.", s.PauseUntil.Local().Format("3:04 PM"))
+		return false, fmt.Sprintf("GitHub asked WeightMaxxer to wait. Next check after %s.", s.PauseUntil.Local().Format("3:04 PM"))
 	}
 	switch t {
 	case TriggerStartup:

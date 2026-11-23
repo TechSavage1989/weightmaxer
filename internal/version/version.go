@@ -11,11 +11,11 @@ var (
 	// Version is the semantic version of this build, for example 1.0.0.
 	Version = "0.0.0-dev"
 	// Identity is embedded verbatim in the executable so the updater can
-	// confirm that a downloaded file is Weightmaxer at the expected version.
+	// confirm that a downloaded file is WeightMaxxer at the expected version.
 	Identity = "WMXID|" + AppID + "|0.0.0-dev|END"
 )
 
-// IdentityFor returns the marker a Weightmaxer executable of version v contains.
+// IdentityFor returns the marker a WeightMaxxer executable of version v contains.
 func IdentityFor(v string) string { return "WMXID|" + AppID + "|" + v + "|END" }
 
 // IsDev reports whether this is a local development build without a release version.

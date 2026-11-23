@@ -1,17 +1,18 @@
-Weightmaxer
+WeightMaxxer
 ===========
 
 Plan how long it takes to lose or gain weight, how many calories to eat each
 day, and track your weigh-ins against the plan.
 
-Start Weightmaxer.exe. It runs from any folder you can change (for example
-Documents or Downloads); it doesn't need installing or administrator rights.
+Start WeightMaxxer.exe (Weightmaxer.exe in the compatibility download). It
+runs from any folder you can change, such as Documents or Downloads; it
+doesn't need installing or administrator rights.
 
 Your plan and weigh-ins are saved in %APPDATA%\Weightmaxer.
 Update downloads, logs and the previous version's backup are kept in
 %LOCALAPPDATA%\Weightmaxer.
 
-Weightmaxer checks GitHub for new versions and shows a banner when one is
+WeightMaxxer checks GitHub for new versions and shows a banner when one is
 available. It downloads and installs an update only when you press the
 buttons in that banner.
 

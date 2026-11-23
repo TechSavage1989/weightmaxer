@@ -6,7 +6,7 @@
     "#1": {
       "0409": {
         "identity": { "name": "TechSavage1989.Weightmaxer", "version": "" },
-        "description": "Weightmaxer",
+        "description": "WeightMaxxer",
         "minimum-os": "win10",
         "execution-level": "as invoker",
         "ui-access": false,
@@ -31,10 +31,10 @@
         "info": {
           "0409": {
             "CompanyName": "TechSavage1989",
-            "FileDescription": "Weightmaxer",
-            "InternalName": "Weightmaxer",
-            "OriginalFilename": "Weightmaxer.exe",
-            "ProductName": "Weightmaxer",
+            "FileDescription": "WeightMaxxer",
+            "InternalName": "WeightMaxxer",
+            "OriginalFilename": "WeightMaxxer.exe",
+            "ProductName": "WeightMaxxer",
             "LegalCopyright": "TechSavage1989"
           }
         }

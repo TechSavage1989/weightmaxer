@@ -1,4 +1,4 @@
-Weightmaxer includes the following third-party software.
+WeightMaxxer includes the following third-party software.
 
 ================================================================
 Go standard library

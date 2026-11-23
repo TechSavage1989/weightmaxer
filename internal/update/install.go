@@ -69,12 +69,12 @@ func ReadJSON(path string, v any) error {
 }
 
 // CheckWritable confirms new files can be created next to the executable.
-// Weightmaxer never asks for administrator rights; a copy in a protected
+// WeightMaxxer never asks for administrator rights; a copy in a protected
 // folder such as Program Files has to be updated by downloading it again.
 func CheckWritable(dir string) error {
 	f, err := os.CreateTemp(dir, ".weightmaxer-write-test-*")
 	if err != nil {
-		return fmt.Errorf("Weightmaxer can't update itself in %s. Move Weightmaxer.exe to a folder you can change, such as Documents, and start it from there", dir)
+		return fmt.Errorf("WeightMaxxer can't update itself in %s. Move the executable to a folder you can change, such as Documents, and start it from there", dir)
 	}
 	name := f.Name()
 	f.Close()

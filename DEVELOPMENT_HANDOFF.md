@@ -4,12 +4,17 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 
 ## Current state
 
-- **Version:** 1.2.0, from `VERSION` (1.0.0 was the first release).
+- **Version:** 1.3.0, from `VERSION` (1.0.0 was the first release).
 - **Repository and update feed:** `TechSavage1989/weightmaxer` (public). Source and
   releases live here; installed copies read
   `https://api.github.com/repos/TechSavage1989/weightmaxer/releases/latest`.
-- **Release assets:** `Weightmaxer-win-x64.zip` (contains `Weightmaxer.exe`,
-  `README.txt`, `THIRD_PARTY_NOTICES.txt`) and `SHA256SUMS.txt`.
+- **Product name:** WeightMaxxer. Repository, website domain, data paths and identity
+  marker retain their established names for compatibility.
+- **Release assets:** primary `WeightMaxxer-win-x64.zip` (contains `WeightMaxxer.exe`,
+  `README.txt`, `THIRD_PARTY_NOTICES.txt`), compatible `Weightmaxer-win-x64.zip`
+  (contains `Weightmaxer.exe` plus the same documents), and `SHA256SUMS.txt`.
+  The executables are identical. Existing updaters keep requesting the original package
+  and replace the running filename, preserving shortcuts.
 - **Platform:** Windows 10/11 x64 with the WebView2 Runtime. Built by cross-compiling
   with Go; no C toolchain.
 - **Website:** https://weightmaxer.techsavage3d.com/ (custom domain; the old
@@ -26,7 +31,7 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
 | Unit tests | `go test ./...` | Linux CI and Windows CI |
 | Repository checks | `python3 -m unittest discover -s scripts -p "test_*.py" -v`, `python3 scripts/check_public_source.py` | Linux CI |
 | Browser tests | `npm ci --prefix tests && npm test --prefix tests` | Linux CI |
-| Release exe opens its window | `Weightmaxer.exe --self-test=<file>` | Windows CI |
+| Release exe opens its window | `WeightMaxxer.exe --self-test=<file>` | Windows CI |
 | End-to-end update | `go test ./tests/e2e -v -timeout 25m` | Windows CI |
 | Website build | `python3 scripts/build_site.py` | Linux CI (then served and browser-tested) |
 | Live feed after publishing | `go run ./cmd/wmxtool feedcheck --expect <version>` | publish job |
@@ -147,3 +152,25 @@ Read [`AGENTS.md`](AGENTS.md) first. This file records the current state for the
   readout staying inside the chart; weigh-ins screenshot shows it.
 - Release `VERSION` 1.2.0. The owner approved the merge ("merge") and gave a standing
   instruction: merging and releasing no longer need asking (recorded in AGENTS.md).
+
+
+### 2026-11-23: 1.3.0 (WeightMaxxer and weigh-in forecasts)
+
+- Requested: change the name to WeightMaxxer and update the schedule/goal with weigh-ins.
+- Updated visible Windows/web branding and new downloads; retained the original release
+  package for installed updaters, shared data folders, browser storage key, domain, API
+  path, mutex and executable identity marker. Both package formats have strict verifiers.
+- The latest valid weigh-in dated between the original plan start and today anchors
+  the remaining forecast. Adding, correcting, deleting, importing or loading entries
+  recomputes calories, macros, BMI, schedule and estimated finish. Original start details
+  and the chosen goal remain intact. Pace keeps its weekly rate; target date keeps its
+  deadline and recomputes the required rate, with calorie minimums still applied.
+- Goal attainment is based on the original direction and shows maintenance. Pre-plan and
+  future entries stay in history; invalid calendar dates are rejected. Calendar-day
+  offsets keep charts and schedules aligned across daylight-saving changes. Historical
+  progress compares with the original plan, independently of the revised forecast.
+- Regression coverage includes both modes, chronological edits/deletes, gain/loss goal
+  crossing, saved-data reload/import, old storage compatibility, DST and chart bounds.
+- CI checks both Windows packages, the primary executable window, existing updater paths,
+  browser/phone layouts, the built website and published downloads. Real README captures
+  are produced by the screenshot script with fictional data.

@@ -10,7 +10,7 @@ import (
 type Semver [3]int
 
 // Parse accepts "1.2.3" or "v1.2.3". Pre-release and build suffixes are rejected
-// because Weightmaxer only updates between stable releases.
+// because WeightMaxxer only updates between stable releases.
 func Parse(s string) (Semver, error) {
 	s = strings.TrimPrefix(strings.TrimSpace(s), "v")
 	parts := strings.Split(s, ".")

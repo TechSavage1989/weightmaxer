@@ -21,7 +21,7 @@ HEAD_EXTRA = (
     '<link rel="icon" type="image/png" href="icon.png">\n'
     '<link rel="apple-touch-icon" href="icon.png">\n'
     f'<link rel="canonical" href="{SITE_URL}">\n'
-    '<meta property="og:title" content="Weightmaxer">\n'
+    '<meta property="og:title" content="WeightMaxxer">\n'
     f'<meta property="og:url" content="{SITE_URL}">\n'
     f'<meta property="og:image" content="{SITE_URL}icon.png">\n'
 )

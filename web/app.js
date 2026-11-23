@@ -1,4 +1,4 @@
-// Weightmaxer user interface. The Windows host (internal/host) provides the
+// WeightMaxxer user interface. The Windows host (internal/host) provides the
 // wmx* functions; without them (a plain browser) the page still works with
 // data kept in memory, which the browser tests rely on.
 (() => {
@@ -46,13 +46,40 @@
   const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const parseISO = (s) => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(s || ""); return m ? new Date(+m[1], m[2] - 1, +m[3]) : null; };
+  const parseISO = (s) => {
+    const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(s || "");
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3] ? d : null;
+  };
+  // Calendar days, independent of daylight-saving clock changes.
+  const dayNumber = (d) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5;
+  const daysBetween = (start, end) => dayNumber(end) - dayNumber(start);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const heightCm = () => (data.units === "imp" ? (num("hft") * 12 + (num("hin") || 0)) * 2.54 : num("hcm"));
   const bmr = (kg, cm, age, sex) => 10 * kg + 6.25 * cm - 5 * age + (sex === "m" ? 5 : -161);
   const bmiOf = (kg, cm) => kg / Math.pow(cm / 100, 2);
   const bmiClass = (b) => (b < 18.5 ? "underweight" : b < 25 ? "healthy" : b < 30 ? "overweight" : "obese");
   const startDate = () => parseISO($("start").value) || today();
+
+  // Weigh-ins change the forecast without overwriting the original plan or goal.
+  function planProgress() {
+    const start = startDate(), end = today();
+    const entries = data.log.filter((e) => {
+      const d = parseISO(e.d);
+      return d && Number.isFinite(e.kg) && e.kg > 20 && e.kg < 400 && d >= start && d <= end;
+    }).sort((a, b) => a.d.localeCompare(b.d));
+    const latest = entries[entries.length - 1] || null;
+    return { start, entries, latest, date: latest ? parseISO(latest.d) : start,
+      kg: latest ? latest.kg : toKg(num("w")) };
+  }
+
+  function actualPoints(progress) {
+    if (!progress.entries.length) return [];
+    const points = progress.entries.map((e) => ({ x: daysBetween(progress.start, parseISO(e.d)) / 7, y: fromKg(e.kg), d: e.d }));
+    if (points[0].x > 0) points.unshift({ x: 0, y: fromKg(toKg(num("w"))), d: iso(progress.start), initial: true });
+    return points;
+  }
 
   // ---------- persistence ----------
   let saveTimer = 0;
@@ -85,7 +112,9 @@
       if (doc.axis === "weeks" || doc.axis === "dates") setAxis(doc.axis);
       if (["system", "light", "dark"].includes(doc.theme)) setTheme(doc.theme);
       if (doc.profile) FIELDS.forEach((f) => { if (doc.profile[f] != null && doc.profile[f] !== "") $(f).value = doc.profile[f]; });
-      if (Array.isArray(doc.log)) data.log = doc.log.filter((e) => e && parseISO(e.d) && e.kg > 20 && e.kg < 400);
+      if (Array.isArray(doc.log)) data.log = [...new Map(doc.log
+        .filter((e) => e && parseISO(e.d) && Number.isFinite(Number(e.kg)) && e.kg > 20 && e.kg < 400)
+        .map((e) => [e.d, { d: e.d, kg: Number(e.kg) }])).values()];
     }
   }
 
@@ -157,7 +186,7 @@
     const floor = p.floor;
     let kg = p.kg, day = 0, floored = false;
     const weeks = [];
-    while ((gaining ? kg < p.goal : kg > p.goal) && day < 365 * 5) {
+    while ((gaining ? kg < p.goal - 1e-9 : kg > p.goal + 1e-9) && day < 365 * 5) {
       const tdee = bmr(kg, p.cm, p.age, p.sex) * p.act;
       let intake = gaining ? tdee + p.daily : tdee - p.daily;
       if (!gaining && intake < floor) { intake = floor; floored = true; }
@@ -166,10 +195,11 @@
       if (Math.abs(change) < 0.0001) return { stuck: true, weeks, floor };
       kg += change; day++;
     }
-    const endKg = gaining ? Math.min(kg, p.goal) : Math.max(kg, p.goal);
+    const reached = Math.abs(kg - p.goal) < 1e-9 || (gaining ? kg >= p.goal : kg <= p.goal);
+    const endKg = reached ? p.goal : kg;
     const tdeeEnd = bmr(endKg, p.cm, p.age, p.sex) * p.act;
     weeks.push({ week: day / 7, kg: endKg, intake: null, tdee: tdeeEnd, end: true });
-    return { days: day, weeks, floored, floor, tdeeEnd, gaining, done: day < 365 * 5 };
+    return { days: day, weeks, floored, floor, tdeeEnd, gaining, done: reached };
   }
 
   // ---------- plan view ----------
@@ -178,14 +208,23 @@
     $("subhead").textContent = sub || "";
     ["stats", "alerts", "table", "schedule-goal"].forEach((i) => ($(i).innerHTML = ""));
     $("chart").innerHTML = "";
+    $("chart")._chart = null;
+    hideHover($("chart"));
+    $("bmi-marks").innerHTML = "";
+    $("bmi-bar").innerHTML = "";
     lastSim = null;
     $("macro-card").hidden = true;
   }
 
   function renderPlan() {
     const sex = $("sex").value, age = num("age"), cm = heightCm(), act = num("act");
-    const kg = toKg(num("w")), goal = toKg(num("g"));
-    const gaining = goal > kg;
+    const originalKg = toKg(num("w")), goal = toKg(num("g"));
+    const progress = planProgress(), { kg, date: forecastStart } = progress;
+    const offset = daysBetween(progress.start, forecastStart) / 7;
+    const gaining = Math.abs(goal - originalKg) < 0.05 ? goal > kg : goal > originalKg;
+    $("plan-basis").textContent = progress.latest
+      ? `Updated from your weigh-in of ${fmtW(kg)} on ${fmtDate(forecastStart)}.`
+      : "Add a weigh-in to update your schedule and goal estimate automatically.";
     $("rate-verb").textContent = gaining ? "Weekly gain" : "Weekly loss";
     $("floor-f").hidden = gaining;
     $("floor").placeholder = String(standardFloor(sex));
@@ -199,17 +238,32 @@
       ? "Gaining 0.25–0.5% of body weight per week keeps most of the gain lean."
       : "0.5–1% of body weight per week is the usual safe range.";
     $("schedule-hint").textContent = gaining
-      ? "Your body burns more as you get heavier, so the daily target rises over time. Recheck it every few weeks."
-      : "Your body burns less as you get lighter, so the daily target drops over time. Recheck it every few weeks.";
+      ? "Your body burns more as you get heavier, so the daily target rises over time. Each weigh-in updates the remaining schedule."
+      : "Your body burns less as you get lighter, so the daily target drops over time. Each weigh-in updates the remaining schedule.";
 
-    const bad = !(age >= 15 && age <= 100) || !(cm > 100 && cm < 250) || !(kg > 30 && kg < 350) || !(goal > 30 && goal < 350);
+    const bad = !(age >= 15 && age <= 100) || !(cm > 100 && cm < 250) || !(originalKg > 30 && originalKg < 350) || !(goal > 30 && goal < 350);
     if (bad) return clearPlan("Fill in every field to see your plan.", "Age 15–100, a realistic height, and both weights are needed.");
     const maint = bmr(kg, cm, age, sex) * act;
     const bmiNow = bmiOf(kg, cm), bmiGoal = bmiOf(goal, cm);
-    renderBmi(bmiNow, bmiGoal);
-    if (Math.abs(goal - kg) < 0.05) {
-      clearPlan("Your goal matches your starting weight.", `To stay at ${fmtW(kg)}, eat about ${fmtN(maint)} kcal a day.`);
-      $("stats").innerHTML = stat("Maintenance", fmtN(maint), "kcal / day") + stat("BMI", bmiNow.toFixed(1), bmiClass(bmiNow));
+    renderBmi(bmiNow, bmiGoal, !!progress.latest);
+    const floor = floorFor(sex);
+    const parameters = { goal, cm, age, sex, act, floor };
+    const target = parseISO($("date").value);
+    const originalDays = target ? daysBetween(progress.start, target) : 0;
+    const originalRate = data.mode === "pace" ? toKg(num("rate")) : originalDays > 0 ? Math.abs(originalKg - goal) * 7 / originalDays : null;
+    const baseline = originalRate > 0 ? simulate({ ...parameters, kg: originalKg, daily: originalRate * KCAL_PER_KG / 7 }) : null;
+    const reached = Math.abs(goal - kg) < 0.05 || (progress.latest && Math.abs(goal - originalKg) >= 0.05 && (gaining ? kg >= goal : kg <= goal));
+    if (reached) {
+      const sim = { days: 0, weeks: [{ week: offset, kg, intake: maint, tdee: maint, end: true }], tdeeEnd: maint, gaining, done: true };
+      lastSim = { sim, baseline, kg, goal, start: progress.start, progress, reached: true };
+      $("head").textContent = progress.latest ? "You've reached your goal." : "Your goal matches your starting weight.";
+      $("subhead").textContent = `To stay at ${fmtW(kg)}, eat about ${fmtN(maint)} kcal a day.`;
+      $("stats").innerHTML = stat("Current weight", fmtW(kg), progress.latest ? "latest weigh-in" : "starting weight") +
+        stat("Goal weight", fmtW(goal), "your chosen goal") + stat("Maintenance", fmtN(maint), "kcal / day") + stat("BMI", bmiNow.toFixed(1), bmiClass(bmiNow));
+      renderAlerts(progress.latest ? [["ok", `Goal met at your latest weigh-in on ${fmtDate(forecastStart)}. The schedule now shows maintenance at your latest weight.`]] : []);
+      drawChart($("chart"), [{ x: offset, y: fromKg(kg) }], actualPoints(progress), fromKg(originalKg), fromKg(goal), offset);
+      renderTable(sim, true);
+      renderMacros(maint, kg, kg, gaining, sex);
       return;
     }
 
@@ -217,13 +271,14 @@
     if (data.mode === "pace") {
       rateKg = toKg(num("rate"));
     } else {
-      const d = parseISO($("date").value);
-      const weeks = d ? (d - startDate()) / (7 * 864e5) : NaN;
-      if (!(weeks > 0)) return clearPlan("Pick a target date after the plan starts.");
+      const weeks = target ? daysBetween(forecastStart, target) / 7 : NaN;
+      if (progress.latest && target && target <= today()) {
+        return clearPlan("Your target date has passed or is today.", "Choose a later target date or switch to Pace to update your remaining schedule.");
+      }
+      if (!(weeks > 0)) return clearPlan(progress.latest ? "Pick a target date after your latest weigh-in." : "Pick a target date after the plan starts.");
       rateKg = Math.abs(kg - goal) / weeks;
     }
-    const floor = floorFor(sex);
-    const sim = simulate({ kg, goal, cm, age, sex, act, floor, daily: (rateKg * KCAL_PER_KG) / 7 });
+    const sim = simulate({ ...parameters, kg, daily: (rateKg * KCAL_PER_KG) / 7 });
     const alerts = [];
     if (!gaining && floor < standardFloor(sex)) alerts.push(["bad", `Your lowest daily calories (${fmtN(floor)} kcal) is below the usual minimum of ${fmtN(standardFloor(sex))} kcal. Eating this little can leave you short of nutrients and muscle; do it only with a doctor's supervision.`]);
     if (!gaining && rateKg > kg * 0.01 * 1.0001) alerts.push(["bad", `Losing ${fmtW(rateKg)} a week is more than 1% of your body weight (${fmtW(kg * 0.01)}). Faster loss tends to cost muscle and is hard to keep up.`]);
@@ -239,21 +294,26 @@
     }
     if (!sim.done) alerts.push(["bad", "At this pace the goal is more than five years away. Pick a faster pace or a closer goal."]);
 
-    lastSim = { sim, kg, goal, start: startDate() };
-    const endDate = addDays(startDate(), sim.days);
+    sim.weeks = sim.weeks.map((w) => ({ ...w, week: w.week + offset }));
+    lastSim = { sim, baseline, kg, goal, start: progress.start, progress, reached: false };
+    const endDate = addDays(forecastStart, sim.days);
     const weeksTotal = sim.days / 7;
     const change = Math.abs(kg - goal);
     const first = sim.weeks[0];
-    $("head").innerHTML = `${gaining ? "Gain" : "Lose"} <em>${fmtW(change)}</em> by <em>${fmtDate(endDate)}</em>`;
-    $("subhead").textContent = `About ${weeksTotal < 9 ? Math.round(weeksTotal) + " weeks" : (weeksTotal / 4.345).toFixed(1) + " months"} at an average of ${fmtW(change / weeksTotal)} per week.`;
+    $("head").innerHTML = sim.done
+      ? `${gaining ? "Gain" : "Lose"} <em>${fmtW(change)}</em> by <em>${fmtDate(endDate)}</em>`
+      : "Your goal is beyond the five-year forecast.";
+    $("subhead").textContent = sim.done
+      ? `About ${weeksTotal < 9 ? Math.max(1, Math.round(weeksTotal)) + " weeks" : (weeksTotal / 4.345).toFixed(1) + " months"}${progress.latest ? " remaining" : ""} at an average of ${fmtW(change / weeksTotal)} per week.`
+      : `The projection reaches ${fmtW(sim.weeks[sim.weeks.length - 1].kg)} by ${fmtDate(endDate)}. Choose a faster pace or a closer goal for a completion estimate.`;
     $("stats").innerHTML =
       stat("Eat now", fmtN(first.intake), "kcal / day") +
-      stat("Maintenance", fmtN(maint), "kcal / day at the start") +
+      stat("Maintenance", fmtN(maint), progress.latest ? "kcal / day at your latest weight" : "kcal / day at the start") +
       stat(gaining ? "Daily surplus" : "Daily deficit", fmtN(Math.abs(first.tdee - first.intake)), "kcal") +
-      stat("After reaching goal", fmtN(sim.tdeeEnd), "kcal / day to hold");
+      stat("After reaching goal", fmtN(bmr(goal, cm, age, sex) * act), "kcal / day to hold");
     if (!alerts.length) alerts.push(["ok", gaining ? "This pace is within the usual range for a lean gain." : "This pace is within the commonly recommended range of up to 1% of body weight per week."]);
     renderAlerts(alerts);
-    drawChart($("chart"), sim.weeks.map((w) => ({ x: w.week, y: fromKg(w.kg) })), [], fromKg(kg), fromKg(goal), sim.weeks[sim.weeks.length - 1].week);
+    drawChart($("chart"), sim.weeks.map((w) => ({ x: w.week, y: fromKg(w.kg) })), actualPoints(progress), fromKg(originalKg), fromKg(goal), sim.weeks[sim.weeks.length - 1].week);
     renderTable(sim);
     renderMacros(first.intake, kg, goal, gaining, sex);
   }
@@ -293,7 +353,7 @@
   const stat = (k, v, sub) => `<div class="stat"><span class="lbl">${k}</span><span class="v">${v}</span><span class="k">${sub}</span></div>`;
   const renderAlerts = (list) => ($("alerts").innerHTML = list.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join(""));
 
-  function renderTable(sim) {
+  function renderTable(sim, reached = false) {
     const w = sim.weeks;
     const step = w.length > 40 ? 8 : w.length > 16 ? 4 : w.length > 8 ? 2 : 1;
     const rows = w.filter((r, i) => i % step === 0 && !r.end);
@@ -302,12 +362,16 @@
     // The Burn column is hidden on phones (.burn) so Eat always fits on screen.
     let h = `<thead><tr><th>Week</th><th>Date</th><th class="n">Weight</th><th class="n">Eat<span class="unit-head"> kcal</span></th><th class="n burn">Burn</th></tr></thead><tbody>`;
     rows.forEach((r) => {
-      h += `<tr><td>${r.week}</td><td>${fmtDate(addDays(s, r.week * 7))}</td><td class="n">${fmtW(r.kg)}</td><td class="n">${fmtN(r.intake)}<span class="unit"> kcal</span></td><td class="n burn">${fmtN(r.tdee)} kcal</td></tr>`;
+      const week = Number.isInteger(r.week) ? r.week : r.week.toFixed(1);
+      h += `<tr><td>${week}</td><td>${fmtDate(addDays(s, Math.round(r.week * 7)))}</td><td class="n">${fmtW(r.kg)}</td><td class="n">${fmtN(r.intake)}<span class="unit"> kcal</span></td><td class="n burn">${fmtN(r.tdee)} kcal</td></tr>`;
     });
     const goalDay = addDays(s, Math.round(last.week * 7));
-    h += `<tr class="goal-row"><td>${last.week.toFixed(1)}</td><td>${fmtDate(goalDay)}</td><td class="n">${fmtW(last.kg)}</td><td class="n">${fmtN(last.tdee)}<span class="unit"> kcal</span></td><td class="n burn">${fmtN(last.tdee)} kcal</td></tr>`;
+    h += `<tr${sim.done ? ' class="goal-row"' : ""}><td>${last.week.toFixed(1)}</td><td>${fmtDate(goalDay)}</td><td class="n">${fmtW(last.kg)}</td><td class="n">${fmtN(last.tdee)}<span class="unit"> kcal</span></td><td class="n burn">${fmtN(last.tdee)} kcal</td></tr>`;
     $("table").innerHTML = h + "</tbody>";
-    $("schedule-goal").textContent = `Goal reached ${fmtDate(goalDay)}. From then on, eat about ${fmtN(last.tdee)} kcal a day to stay at ${fmtW(last.kg)}.`;
+    $("schedule-goal").textContent = reached
+      ? `Goal reached. Maintenance from ${fmtDate(goalDay)}: about ${fmtN(last.tdee)} kcal a day at your latest weight of ${fmtW(last.kg)}.`
+      : sim.done ? `Estimated goal date: ${fmtDate(goalDay)}. From then on, eat about ${fmtN(last.tdee)} kcal a day to stay at ${fmtW(last.kg)}.`
+      : `The five-year projection ends on ${fmtDate(goalDay)} before reaching your goal.`;
   }
 
   function niceStep(raw) {
@@ -321,7 +385,7 @@
     const W = svg.clientWidth || 700, H = 260;
     const m = { l: 52, r: 18, t: 16, b: 30 };
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-    const ys = [startY, goalY, ...actual.map((p) => p.y)];
+    const ys = [startY, goalY, ...plan.map((p) => p.y), ...actual.map((p) => p.y)];
     const hi = Math.max(...ys), lo = Math.min(...ys);
     const pad = Math.max(1, (hi - lo) * 0.12);
     const yMax = hi + pad, yMin = lo - pad;
@@ -359,12 +423,14 @@
     s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(goalY)}" y2="${y(goalY)}" stroke="var(--good)" stroke-dasharray="4 4"/>`;
     s += `<text x="${m.l + 8}" y="${y(goalY) + (goalY < startY ? 16 : -6)}" style="fill:var(--good)">goal ${goalY.toFixed(1)} ${wUnit()}</text>`;
     if (plan.length) {
+      const first = plan[0];
       const line = plan.map((p, i) => `${i ? "L" : "M"}${x(p.x).toFixed(1)},${y(p.y).toFixed(1)}`).join("");
       const base = goalY < startY ? H - m.b : m.t;
-      s += `<path d="${line}L${x(plan[plan.length - 1].x)},${base}L${x(0)},${base}Z" fill="var(--accent)" fill-opacity="${actual.length ? 0.06 : 0.12}"/>`;
+      s += `<path d="${line}L${x(plan[plan.length - 1].x)},${base}L${x(first.x)},${base}Z" fill="var(--accent)" fill-opacity="${actual.length ? 0.06 : 0.12}"/>`;
       s += `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-opacity="${actual.length ? 0.55 : 1}" stroke-linejoin="round"/>`;
-      s += `<circle cx="${x(0)}" cy="${y(startY)}" r="4" fill="var(--accent)"/>`;
-      s += `<text x="${x(0) + 8}" y="${y(startY) + (goalY < startY ? -6 : 14)}" style="fill:var(--fg)">${startY.toFixed(1)} ${wUnit()}</text>`;
+      s += `<circle cx="${x(first.x)}" cy="${y(first.y)}" r="4" fill="var(--accent)"/>`;
+      const atEnd = x(first.x) > W - m.r - 100;
+      s += `<text x="${x(first.x) + (atEnd ? -8 : 8)}" y="${y(first.y) + (goalY < startY ? -6 : 14)}" text-anchor="${atEnd ? "end" : "start"}" style="fill:var(--fg)">${first.y.toFixed(1)} ${wUnit()}</text>`;
     }
     if (actual.length) {
       const line = actual.map((p, i) => `${i ? "L" : "M"}${x(p.x).toFixed(1)},${y(p.y).toFixed(1)}`).join("");
@@ -396,9 +462,9 @@
     day = Math.max(0, Math.min(Math.round(c.maxX * 7), Math.round(day)));
     svg._hoverDay = day;
     const v = day / 7, px = c.x(v);
-    const planned = c.plan.length && v <= c.plan[c.plan.length - 1].x + 1e-9 ? planAt(c.plan, v) : null;
+    const planned = c.plan.length && v >= c.plan[0].x - 1e-9 && v <= c.plan[c.plan.length - 1].x + 1e-9 ? planAt(c.plan, v) : null;
     let near = null;
-    for (const p of c.actual) if (Math.abs(p.x - v) <= 3 / 7 && (!near || Math.abs(p.x - v) < Math.abs(near.x - v))) near = p;
+    for (const p of c.actual) if (!p.initial && Math.abs(p.x - v) <= 3 / 7 && (!near || Math.abs(p.x - v) < Math.abs(near.x - v))) near = p;
     g.setAttribute("visibility", "visible");
     g.querySelector(".hv-line").setAttribute("x1", px);
     g.querySelector(".hv-line").setAttribute("x2", px);
@@ -414,7 +480,7 @@
     if (planned != null) html += `<div class="tip-row"><span>Plan</span><span>${planned.toFixed(1)} ${wUnit()}</span></div>`;
     if (near) {
       const nd = parseISO(near.d);
-      const when = Math.round((nd - date) / 864e5) === 0 ? "Weighed" : `Weighed ${nd.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+      const when = daysBetween(date, nd) === 0 ? "Weighed" : `Weighed ${nd.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
       html += `<div class="tip-row"><span>${when}</span><span>${near.y.toFixed(1)} ${wUnit()}</span></div>`;
     }
     tip.innerHTML = html;
@@ -487,14 +553,14 @@
       while (d.getMonth() % every) d.setMonth(d.getMonth() + 1);
       for (; d <= end; d.setMonth(d.getMonth() + every)) {
         const first = !out.length || d.getMonth() === 0;
-        out.push({ v: (d - start) / (7 * 864e5), label: d.toLocaleDateString(undefined, first ? { month: "short", year: "2-digit" } : { month: "short" }) });
+        out.push({ v: daysBetween(start, d) / 7, label: d.toLocaleDateString(undefined, first ? { month: "short", year: "2-digit" } : { month: "short" }) });
       }
       if (out.length <= room) return out.length ? out : [{ v: 0, label: md(start) }];
     }
     return [{ v: 0, label: md(start) }];
   }
 
-  function renderBmi(now, goal) {
+  function renderBmi(now, goal, current = false) {
     const min = 15, max = 40;
     const pos = (b) => Math.min(100, Math.max(0, ((b - min) / (max - min)) * 100));
     const bands = [[15, 18.5, "var(--warn)"], [18.5, 25, "var(--good)"], [25, 30, "var(--warn)"], [30, 40, "var(--bad)"]];
@@ -503,7 +569,7 @@
     // centred under their tick, kept inside the card, pushed apart when they'd
     // collide, and moved to a second row when two can't fit side by side.
     const box = $("bmi-marks");
-    const marks = [{ b: now, text: `Start ${now.toFixed(1)}`, color: "" }, { b: goal, text: `Goal ${goal.toFixed(1)}`, color: "color:var(--accent);" }];
+    const marks = [{ b: now, text: `${current ? "Now" : "Start"} ${now.toFixed(1)}`, color: "" }, { b: goal, text: `Goal ${goal.toFixed(1)}`, color: "color:var(--accent);" }];
     box.innerHTML = marks.map((m) => `<span class="tick" style="${m.color}"></span><span class="lab" style="${m.color}">${m.text}</span>`).join("");
     const W = box.clientWidth;
     if (!W) return; // hidden; drawn again when the Plan tab is shown
@@ -538,29 +604,40 @@
   // ---------- weigh-ins ----------
   function renderLog() {
     const entries = [...data.log].sort((a, b) => (a.d < b.d ? -1 : 1));
-    const s = startDate();
+    const progress = planProgress(), s = progress.start;
     const plan = lastSim ? lastSim.sim.weeks.map((w) => ({ x: w.week, y: fromKg(w.kg) })) : [];
-    const actual = entries.map((e) => ({ x: Math.max(0, (parseISO(e.d) - s) / (7 * 864e5)), y: fromKg(e.kg), d: e.d }));
-    if (!entries.length) {
-      $("log-head").textContent = "No weigh-ins yet";
-      $("log-sub").textContent = "Add your first one on the left to compare your progress with the plan.";
+    const actual = actualPoints(progress);
+    if (!progress.latest) {
+      $("log-head").textContent = entries.length ? "No weigh-ins for this plan yet" : "No weigh-ins yet";
+      $("log-sub").textContent = entries.length
+        ? "Entries before the plan starts or after today stay in History. Add a weigh-in within the current plan to update the forecast."
+        : "Add your first one on the left to update your schedule and goal estimate.";
     } else {
-      const latest = entries[entries.length - 1];
+      const latest = progress.latest;
       const startKg = toKg(num("w"));
       const diff = latest.kg - startKg;
       $("log-head").innerHTML = `${fmtW(latest.kg)} <span class="sub">on ${fmtDate(parseISO(latest.d))}</span>`;
       let sub = `${diff <= 0 ? "Down" : "Up"} ${fmtW(Math.abs(diff))} since the plan started.`;
-      if (lastSim) {
-        const wk = (parseISO(latest.d) - s) / (7 * 864e5);
-        const pw = lastSim.sim.weeks.reduce((best, w) => (Math.abs(w.week - wk) < Math.abs(best.week - wk) ? w : best), lastSim.sim.weeks[0]);
-        const ahead = lastSim.sim.gaining ? latest.kg - pw.kg : pw.kg - latest.kg;
-        sub += Math.abs(ahead) < 0.25 ? " Right on plan." : ahead > 0 ? ` ${fmtW(ahead)} ahead of plan.` : ` ${fmtW(-ahead)} behind plan.`;
+      if (lastSim && lastSim.reached) {
+        sub += " Goal reached. Your schedule now shows maintenance.";
+      } else if (lastSim && lastSim.baseline && lastSim.baseline.weeks.length) {
+        const wk = daysBetween(s, parseISO(latest.d)) / 7;
+        const pw = planAt(lastSim.baseline.weeks.map((w) => ({ x: w.week, y: w.kg })), wk);
+        const ahead = lastSim.baseline.gaining ? latest.kg - pw : pw - latest.kg;
+        sub += Math.abs(ahead) < 0.25 ? " Right on the original plan." : ahead > 0 ? ` ${fmtW(ahead)} ahead of the original plan.` : ` ${fmtW(-ahead)} behind the original plan.`;
+        sub += lastSim.sim.done ? ` Updated goal estimate: ${fmtDate(addDays(s, Math.round(lastSim.sim.weeks[lastSim.sim.weeks.length - 1].week * 7)))}.`
+          : " Your goal is beyond the five-year forecast.";
       }
       $("log-sub").textContent = sub;
     }
     const goalY = fromKg(toKg(num("g"))), startY = fromKg(toKg(num("w")));
     const maxX = plan.length ? plan[plan.length - 1].x : 12;
     if (isFinite(goalY) && isFinite(startY)) drawChart($("log-chart"), plan, actual, startY, goalY, maxX);
+    else {
+      $("log-chart").innerHTML = "";
+      $("log-chart")._chart = null;
+      hideHover($("log-chart"));
+    }
 
     const rows = [...entries].reverse();
     const visible = showAllLog ? rows : rows.slice(0, 10);
@@ -587,10 +664,13 @@
     msg.textContent = existing ? `Updated ${fmtDate(parseISO(d))}.` : `Added ${fmtDate(parseISO(d))}.`;
     $("log-w").value = "";
     saveNow();
-    renderLog();
+    render();
+    msg.textContent += parseISO(d) < startDate() || parseISO(d) > today()
+      ? " Kept in History; this date is outside the current plan."
+      : " Your schedule and goal estimate are updated.";
   }
 
-  // Work that would be lost if Weightmaxer restarted now.
+  // Work that would be lost if WeightMaxxer restarted now.
   function unsavedWork() {
     return $("log-w").value.trim() !== "" ? "You started a weigh-in that isn't added yet. Add it or clear it first." : "";
   }
@@ -601,7 +681,7 @@
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `weightmaxer-data-${iso(today())}.json`;
+    a.download = `weightmaxxer-data-${iso(today())}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -614,7 +694,7 @@
       let doc = null;
       try { doc = JSON.parse(reader.result); } catch (e) { doc = null; }
       if (!doc || typeof doc !== "object" || Array.isArray(doc) || !(doc.profile || doc.log)) {
-        $("data-msg").textContent = "That file isn't a Weightmaxer export.";
+        $("data-msg").textContent = "That file isn't a WeightMaxxer export.";
         return;
       }
       data.log = [];
@@ -663,22 +743,22 @@
     const more = u.more ? ` <button type="button" class="linkbtn" data-act="notes">Read more</button>` : "";
     switch (u.phase) {
       case "available":
-        html = `<div><span class="b-title">Weightmaxer ${esc(u.latest)} is available.</span> <span class="b-sub">You have ${esc(u.current)}.</span></div>` +
+        html = `<div><span class="b-title">WeightMaxxer ${esc(u.latest)} is available.</span> <span class="b-sub">You have ${esc(u.current)}.</span></div>` +
           (notes ? `<div class="b-notes"><strong>What's new</strong>${notes}${more}</div>` : more) +
           `<div class="b-row"><button type="button" class="btn primary" data-act="download">Download</button><button type="button" class="btn" data-act="later">Later</button></div>`;
         break;
       case "downloading": {
         const p = u.progress && u.progress.total ? Math.floor((u.progress.done / u.progress.total) * 100) : 0;
-        html = `<div class="b-title">Downloading Weightmaxer ${esc(u.latest)}… ${p}%</div><div class="progress" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100"><span style="width:${p}%"></span></div>`;
+        html = `<div class="b-title">Downloading WeightMaxxer ${esc(u.latest)}… ${p}%</div><div class="progress" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100"><span style="width:${p}%"></span></div>`;
         break;
       }
       case "ready":
-        html = `<div class="b-title">Weightmaxer ${esc(u.latest)} is ready to install</div>` +
-          `<div class="b-sub">Weightmaxer will close and reopen. Your plan and weigh-ins are already saved.</div>` +
+        html = `<div class="b-title">WeightMaxxer ${esc(u.latest)} is ready to install</div>` +
+          `<div class="b-sub">WeightMaxxer will close and reopen. Your plan and weigh-ins are already saved.</div>` +
           `<div class="b-row"><button type="button" class="btn primary" data-act="install">Install and restart</button><button type="button" class="btn" data-act="later">Later</button><span class="hint" id="install-msg" role="status"></span></div>`;
         break;
       case "installing":
-        html = `<div class="b-title">Installing Weightmaxer ${esc(u.latest)}…</div><div class="b-sub">Weightmaxer will reopen in a moment.</div>`;
+        html = `<div class="b-title">Installing WeightMaxxer ${esc(u.latest)}…</div><div class="b-sub">WeightMaxxer will reopen in a moment.</div>`;
         break;
       case "error":
         cls += " bad";
@@ -760,7 +840,7 @@
       if (!d) return;
       data.log = data.log.filter((x) => x.d !== d);
       saveNow();
-      renderLog();
+      render();
     });
     $("log-more").onclick = () => { showAllLog = !showAllLog; renderLog(); };
     document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => show(b.dataset.view)));

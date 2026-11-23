@@ -159,7 +159,7 @@ func TestDownloadVerifyAndExtract(t *testing.T) {
 		t.Fatal("extracted exe differs")
 	}
 	// Wrong version marker is rejected.
-	if _, err := ExtractExe(zp, "1.2.0", filepath.Join(dir, "s2")); err == nil || !strings.Contains(err.Error(), "isn't Weightmaxer 1.2.0") {
+	if _, err := ExtractExe(zp, "1.2.0", filepath.Join(dir, "s2")); err == nil || !strings.Contains(err.Error(), "isn't WeightMaxxer 1.2.0") {
 		t.Fatalf("version mismatch err = %v", err)
 	}
 }
@@ -207,6 +207,47 @@ func TestDownloadRejectsTampering(t *testing.T) {
 			left, _ := os.ReadDir(dir)
 			if len(left) != 0 {
 				t.Fatalf("left files behind: %v", left)
+			}
+		})
+	}
+}
+
+func TestBrandedAndCompatibilityPackagesStaySeparate(t *testing.T) {
+	exe := probeExe(t, "1.3.0")
+	legacy := makeZip(t, map[string][]byte{ExeName: exe, "README.txt": []byte("hi")})
+	branded := makeZip(t, map[string][]byte{BrandedExeName: exe, "README.txt": []byte("hi")})
+	for _, tc := range []struct {
+		name    string
+		archive []byte
+		entry   string
+		extract func(string, string, string) (string, error)
+		accept  bool
+	}{
+		{"legacy updater", legacy, ExeName, ExtractExe, true},
+		{"branded download", branded, BrandedExeName, ExtractBrandedExe, true},
+		{"legacy rejects branded", branded, "", ExtractExe, false},
+		{"branded rejects legacy", legacy, "", ExtractBrandedExe, false},
+		{"legacy rejects two executables", makeZip(t, map[string][]byte{ExeName: exe, BrandedExeName: exe}), "", ExtractExe, false},
+		{"branded rejects two executables", makeZip(t, map[string][]byte{ExeName: exe, BrandedExeName: exe}), "", ExtractBrandedExe, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			zp := filepath.Join(dir, "download.zip")
+			if err := os.WriteFile(zp, tc.archive, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			out, err := tc.extract(zp, "1.3.0", filepath.Join(dir, "staging"))
+			if !tc.accept {
+				if err == nil {
+					t.Fatal("accepted the wrong executable name")
+				}
+				return
+			}
+			if err != nil || filepath.Base(out) != tc.entry {
+				t.Fatalf("extract = %q, %v", out, err)
+			}
+			if _, err := tc.extract(zp, "1.3.1", filepath.Join(dir, "wrong-version")); err == nil {
+				t.Fatal("accepted an executable with the wrong version marker")
 			}
 		})
 	}

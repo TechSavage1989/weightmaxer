@@ -54,7 +54,7 @@ func RunHelper(pendingPath string) int {
 		return 0
 	}
 	if !waitPID(p.ParentPID, 60*time.Second) {
-		return finish(errors.New("Weightmaxer didn't close, so the update wasn't installed"), false)
+		return finish(errors.New("WeightMaxxer didn't close, so the update wasn't installed"), false)
 	}
 	backup, err := keepOneBackup(p.Target, p.BackupDir, p.From)
 	if err != nil {
@@ -63,7 +63,7 @@ func RunHelper(pendingPath string) int {
 	}
 	if err := swapIn(p.Staged, p.Target); err != nil {
 		_ = launch(p.Target, "--update-failed="+p.Result)
-		return finish(fmt.Errorf("couldn't replace Weightmaxer.exe: %w", err), false)
+		return finish(fmt.Errorf("couldn't replace %s: %w", filepath.Base(p.Target), err), false)
 	}
 	os.Remove(p.Health)
 	proc, err := launchProc(p.Target, "--post-update="+pendingPath)
@@ -123,11 +123,11 @@ func waitHealthy(p Plan, proc *os.Process) error {
 		}
 		select {
 		case <-exited:
-			return fmt.Errorf("Weightmaxer %s closed right after starting", p.To)
+			return fmt.Errorf("WeightMaxxer %s closed right after starting", p.To)
 		case <-time.After(250 * time.Millisecond):
 		}
 	}
-	return fmt.Errorf("Weightmaxer %s didn't open its window", p.To)
+	return fmt.Errorf("WeightMaxxer %s didn't open its window", p.To)
 }
 
 func launch(path string, args ...string) error {

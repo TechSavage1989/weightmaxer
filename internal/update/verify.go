@@ -14,9 +14,9 @@ import (
 	"github.com/TechSavage1989/weightmaxer/internal/version"
 )
 
-// Files a release zip may contain. Anything else rejects the download.
-var allowedEntries = map[string]bool{
-	ExeName:                   true,
+// Supporting files either release zip may contain. The selected entry point
+// accepts exactly one executable filename; alternate names are not aliases.
+var allowedDocuments = map[string]bool{
 	"README.txt":              true,
 	"THIRD_PARTY_NOTICES.txt": true,
 }
@@ -30,8 +30,18 @@ const (
 
 // ExtractExe validates the release zip and writes Weightmaxer.exe to dir.
 // It rejects path traversal, unexpected or duplicate files, links,
-// decompression bombs and executables that are not Weightmaxer wantVersion.
+// decompression bombs and executables that are not WeightMaxxer wantVersion.
 func ExtractExe(zipPath, wantVersion, dir string) (string, error) {
+	return extractPackage(zipPath, wantVersion, dir, ExeName)
+}
+
+// ExtractBrandedExe validates the manual-download package. It is used by the
+// release verifier, never by the installed app's legacy-compatible updater.
+func ExtractBrandedExe(zipPath, wantVersion, dir string) (string, error) {
+	return extractPackage(zipPath, wantVersion, dir, BrandedExeName)
+}
+
+func extractPackage(zipPath, wantVersion, dir, exeName string) (string, error) {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return "", fmt.Errorf("the download isn't a valid zip file: %w", err)
@@ -43,7 +53,7 @@ func ExtractExe(zipPath, wantVersion, dir string) (string, error) {
 	seen := map[string]bool{}
 	var exe *zip.File
 	for _, f := range zr.File {
-		if err := checkEntry(f); err != nil {
+		if err := checkEntry(f, exeName); err != nil {
 			return "", err
 		}
 		key := strings.ToLower(f.Name)
@@ -51,17 +61,17 @@ func ExtractExe(zipPath, wantVersion, dir string) (string, error) {
 			return "", fmt.Errorf("the download contains %s twice", f.Name)
 		}
 		seen[key] = true
-		if f.Name == ExeName {
+		if f.Name == exeName {
 			exe = f
 		}
 	}
 	if exe == nil {
-		return "", errors.New("the download doesn't contain Weightmaxer.exe")
+		return "", fmt.Errorf("the download doesn't contain %s", exeName)
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
-	out := filepath.Join(dir, ExeName)
+	out := filepath.Join(dir, exeName)
 	if err := extract(exe, out); err != nil {
 		os.Remove(out)
 		return "", err
@@ -73,19 +83,19 @@ func ExtractExe(zipPath, wantVersion, dir string) (string, error) {
 	return out, nil
 }
 
-func checkEntry(f *zip.File) error {
+func checkEntry(f *zip.File, exeName string) error {
 	n := f.Name
 	if n == "" || strings.ContainsAny(n, `\/:`) || n == "." || n == ".." || strings.HasPrefix(n, ".") {
 		return fmt.Errorf("the download contains an unsafe path %q", n)
 	}
-	if !allowedEntries[n] {
+	if n != exeName && !allowedDocuments[n] {
 		return fmt.Errorf("the download contains an unexpected file %q", n)
 	}
 	if !f.Mode().IsRegular() {
 		return fmt.Errorf("%s in the download is not a regular file", n)
 	}
 	limit := uint64(maxOtherSize)
-	if n == ExeName {
+	if n == exeName {
 		limit = maxExeSize
 	}
 	if f.UncompressedSize64 == 0 || f.UncompressedSize64 > limit {
@@ -123,7 +133,7 @@ func extract(f *zip.File, out string) error {
 }
 
 // CheckExecutable confirms path is a 64-bit Windows GUI program carrying the
-// Weightmaxer identity marker for exactly wantVersion.
+// WeightMaxxer identity marker for exactly wantVersion.
 func CheckExecutable(path, wantVersion string) error {
 	f, err := pe.Open(path)
 	if err != nil {
@@ -146,7 +156,7 @@ func CheckExecutable(path, wantVersion string) error {
 		return err
 	}
 	if !bytes.Contains(b, []byte(version.IdentityFor(wantVersion))) {
-		return fmt.Errorf("the downloaded program isn't Weightmaxer %s", wantVersion)
+		return fmt.Errorf("the downloaded program isn't WeightMaxxer %s", wantVersion)
 	}
 	return nil
 }
