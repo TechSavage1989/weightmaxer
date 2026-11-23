@@ -1,4 +1,4 @@
-// Package paths decides where Weightmaxer keeps per-user files. Nothing is
+// Package paths decides where WeightMaxxer keeps per-user files. Nothing is
 // written beside the executable except a short-lived replacement file while an
 // update is being installed.
 package paths

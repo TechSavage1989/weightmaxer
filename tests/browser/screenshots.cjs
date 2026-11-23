@@ -1,8 +1,12 @@
 // Recaptures the README screenshots in docs/images/ from the real interface
-// (web/index.html, the page the Weightmaxer window shows) with fictional data.
+// (web/index.html, the page the WeightMaxxer window shows) with fictional data.
 // Run after visible UI changes: node tests/browser/screenshots.cjs
 const path = require("path");
+const fs = require("fs");
 const { chromium } = require("playwright");
+const VERSION = fs.readFileSync(path.resolve(__dirname, "..", "..", "VERSION"), "utf8").trim();
+const NOTES = fs.readFileSync(path.resolve(__dirname, "..", "..", "docs", "releases", `${VERSION}.md`), "utf8")
+  .split("\n").filter((line) => line.startsWith("- ")).map((line) => line.slice(2));
 
 const PAGE = "file://" + path.resolve(__dirname, "..", "..", "web", "index.html").replace(/\\/g, "/");
 const OUT = path.resolve(__dirname, "..", "..", "docs", "images");
@@ -14,22 +18,23 @@ const sample = {
 };
 
 async function page(browser, doc, upd) {
-  const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 1 });
-  await p.addInitScript(([doc, upd]) => {
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 1, locale: "en-US", timezoneId: "UTC" });
+  await p.clock.setFixedTime(new Date("2026-11-23T17:00:00Z"));
+  await p.addInitScript(([doc, upd, version]) => {
     window.wmxLoad = () => doc;
     window.wmxSave = () => {};
-    window.wmxInfo = () => ({ version: "1.0.0", dataFolder: "C:\\Users\\alex\\AppData\\Roaming\\Weightmaxer" });
+    window.wmxInfo = () => ({ version, dataFolder: "C:\\Users\\alex\\AppData\\Roaming\\Weightmaxer" });
     window.wmxReady = () => window.wmxUpdate(upd);
     try { localStorage.clear(); } catch (e) {}
-  }, [JSON.stringify(doc), upd]);
+  }, [JSON.stringify(doc), upd, VERSION]);
   await p.goto(PAGE);
   await p.waitForTimeout(300);
   return p;
 }
 
 (async () => {
-  const browser = await chromium.launch();
-  const idle = { current: "1.0.0", phase: "idle", check: { kind: "up-to-date", at: new Date().toISOString() }, progress: {} };
+  const browser = await chromium.launch(process.env.CI_CHROME_PATH ? { executablePath: process.env.CI_CHROME_PATH } : {});
+  const idle = { current: VERSION, phase: "idle", check: { kind: "up-to-date", at: "2026-11-23T17:00:00Z" }, progress: {} };
 
   let p = await page(browser, sample, idle);
   await p.screenshot({ path: path.join(OUT, "hero.png") });
@@ -56,7 +61,7 @@ async function page(browser, doc, upd) {
   await p.screenshot({ path: path.join(OUT, "gain-and-macros.png") });
   await p.close();
 
-  const avail = { current: "1.0.0", latest: "1.1.0", phase: "available", notes: ["Weekly averages on the weigh-in chart", "Export your weigh-ins as CSV"], more: true, check: { kind: "available", at: new Date().toISOString() }, progress: {} };
+  const avail = { current: "1.2.0", latest: VERSION, phase: "available", notes: NOTES.slice(0, 4), more: NOTES.length > 4, check: { kind: "available", at: "2026-11-23T17:00:00Z" }, progress: {} };
   p = await page(browser, sample, avail);
   await p.screenshot({ path: path.join(OUT, "update-banner.png"), clip: { x: 0, y: 0, width: 1280, height: 420 } });
   await p.close();

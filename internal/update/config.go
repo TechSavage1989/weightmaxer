@@ -1,4 +1,4 @@
-// Package update checks GitHub releases for a newer Weightmaxer, downloads and
+// Package update checks GitHub releases for a newer WeightMaxxer, downloads and
 // verifies it, and installs it through a helper process with rollback. It never
 // downloads or installs on its own: the app calls Download and Install only
 // after the user presses the matching button.
@@ -15,12 +15,15 @@ import (
 )
 
 const (
-	// AssetName is the Windows download attached to every release.
+	// AssetName is the legacy Windows download retained for all installed updaters.
 	AssetName = "Weightmaxer-win-x64.zip"
 	// SumsName lists the SHA-256 of every release download.
 	SumsName = "SHA256SUMS.txt"
 	// ExeName is the stable launch filename inside AssetName.
 	ExeName = "Weightmaxer.exe"
+	// BrandedExeName is used only by the primary manual-download package.
+	// The updater keeps ExeName and replaces whichever executable is running.
+	BrandedExeName = "WeightMaxxer.exe"
 
 	maxZipSize  = 64 << 20
 	maxSumsSize = 64 << 10
@@ -53,7 +56,7 @@ func Production(currentVersion string) Config {
 			"release-assets.githubusercontent.com":  true,
 			"github-releases.githubusercontent.com": true,
 		},
-		UserAgent: "Weightmaxer/" + currentVersion + " (update check)",
+		UserAgent: "WeightMaxxer/" + currentVersion + " (update check)",
 	}
 	applyTestOverrides(&c)
 	return c

@@ -40,6 +40,7 @@ jobs:
       - name: Build is reproducible
         run: |
           python3 scripts/build.py --out build/repro
+          cmp dist/WeightMaxxer-win-x64.zip build/repro/WeightMaxxer-win-x64.zip
           cmp dist/Weightmaxer-win-x64.zip build/repro/Weightmaxer-win-x64.zip
       - name: Browser tests
         run: |
@@ -58,6 +59,16 @@ jobs:
           sleep 1
           if command -v google-chrome >/dev/null; then export CI_CHROME_PATH="$(command -v google-chrome)"; fi
           WMX_SITE_URL=http://127.0.0.1:8765/ npm test --prefix tests
+      - name: Capture current README screenshots with fictional data
+        run: |
+          if command -v google-chrome >/dev/null; then export CI_CHROME_PATH="$(command -v google-chrome)"; fi
+          node tests/browser/screenshots.cjs
+      - name: Keep screenshots for visual review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: readme-screenshots
+          path: docs/images/*.png
+          if-no-files-found: error
       - name: Keep the website for deployment
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v4
@@ -67,6 +78,7 @@ jobs:
         with:
           name: windows-release
           path: |
+            dist/WeightMaxxer-win-x64.zip
             dist/Weightmaxer-win-x64.zip
             dist/SHA256SUMS.txt
           if-no-files-found: error
@@ -90,16 +102,16 @@ jobs:
       - name: Release build opens its window (WebView2)
         shell: pwsh
         run: |
-          Expand-Archive dist/Weightmaxer-win-x64.zip -DestinationPath "$env:RUNNER_TEMP\app"
+          Expand-Archive dist/WeightMaxxer-win-x64.zip -DestinationPath "$env:RUNNER_TEMP\app"
           $report = "$env:RUNNER_TEMP\selftest.json"
-          $p = Start-Process -FilePath "$env:RUNNER_TEMP\app\Weightmaxer.exe" -ArgumentList "--self-test=$report" -PassThru
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP\app\WeightMaxxer.exe" -ArgumentList "--self-test=$report" -PassThru
           $ok = $p.WaitForExit(120000)
           Get-Content "$env:LOCALAPPDATA\Weightmaxer\logs\weightmaxer.log" -ErrorAction SilentlyContinue
-          if (-not $ok) { Stop-Process $p -Force; throw "Weightmaxer did not finish its self-test" }
+          if (-not $ok) { Stop-Process $p -Force; throw "WeightMaxxer did not finish its self-test" }
           $h = Get-Content $report -Raw | ConvertFrom-Json
           $want = (Get-Content VERSION -Raw).Trim()
           if ($h.version -ne $want -or -not $h.visible) { throw "self-test report: $(Get-Content $report -Raw)" }
-          Write-Host "Weightmaxer $($h.version) opened a visible window"
+          Write-Host "WeightMaxxer $($h.version) opened a visible window"
           if (Test-Path "$env:RUNNER_TEMP\app\*.new") { throw "files left beside the executable" }
       - name: End-to-end update (old version to new, tampered download, rollback)
         run: go test ./tests/e2e -v -count=1 -timeout 25m
@@ -156,8 +168,8 @@ jobs:
           test -s "docs/releases/$version.md"
           (cd dist && sha256sum -c SHA256SUMS.txt)
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Weightmaxer $version" --notes-file "docs/releases/$version.md" --draft \
-            dist/Weightmaxer-win-x64.zip dist/SHA256SUMS.txt
+            --title "WeightMaxxer $version" --notes-file "docs/releases/$version.md" --draft \
+            dist/WeightMaxxer-win-x64.zip dist/Weightmaxer-win-x64.zip dist/SHA256SUMS.txt
           gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest
       - name: Verify the published downloads
         env:
@@ -168,4 +180,5 @@ jobs:
           mkdir published
           gh release download "v$version" --repo "$GITHUB_REPOSITORY" --dir published
           (cd published && sha256sum -c SHA256SUMS.txt)
+          go run ./cmd/wmxtool verify-branded published/WeightMaxxer-win-x64.zip "$version"
           go run ./cmd/wmxtool feedcheck --expect "$version"

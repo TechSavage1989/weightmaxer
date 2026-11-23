@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Weightmaxer</title>
+<title>WeightMaxxer</title>
 <script>
   // Apply a saved Light/Dark choice before the page draws, so it doesn't flash.
   try { var t = JSON.parse(localStorage.getItem("weightmaxer-data") || "{}").theme; if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
@@ -14,7 +14,7 @@
 <header class="topbar">
   <div class="brand">
     <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" class="bm-bg"/><path d="M14 40a18 18 0 0 1 36 0" class="bm-arc"/><path d="M32 40 41 25" class="bm-needle"/><circle cx="32" cy="40" r="4" class="bm-hub"/></svg>
-    <span class="brand-name">Weightmaxer</span>
+    <span class="brand-name">WeightMaxxer</span>
   </div>
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button role="tab" id="tab-plan" aria-selected="true" data-view="plan">Plan</button>
@@ -112,6 +112,7 @@
           <div class="headline">
             <div class="big" id="head"></div>
             <div class="sub" id="subhead"></div>
+            <p class="hint" id="plan-basis"></p>
           </div>
           <div class="stats" id="stats"></div>
           <div class="alerts" id="alerts"></div>
@@ -171,6 +172,7 @@
         </div>
         <button type="submit" class="btn primary" id="log-add">Add weigh-in</button>
         <p class="hint" id="log-msg" role="status"></p>
+        <p class="hint">Your latest weigh-in updates the remaining schedule and goal estimate. Entries before the plan starts or after today stay in History without changing the forecast.</p>
         <p class="hint">Weigh yourself at the same time of day, ideally in the morning. Day-to-day changes of a pound or two are mostly water.</p>
       </form>
       <section class="results">
@@ -210,7 +212,7 @@
         <p class="hint">System follows your device's light or dark setting. The button at the top switches between light and dark.</p>
       </div>
       <div class="card web-only" hidden>
-        <h2>Weightmaxer on the web</h2>
+        <h2>WeightMaxxer on the web</h2>
         <p class="hint">You're using the web version. It works offline once loaded and keeps your data in this browser only. A Windows app with the same features is also available.</p>
         <div class="actions"><a class="btn" id="get-app" href="https://github.com/TechSavage1989/weightmaxer/releases/latest" target="_blank" rel="noopener">Get the Windows app</a></div>
       </div>
@@ -222,11 +224,11 @@
           <button type="button" class="btn" id="check-now">Check now</button>
           <span class="hint" id="check-msg" role="status"></span>
         </div>
-        <p class="hint">Weightmaxer checks for a new version when it starts, every five minutes while its window is open, and when you come back to it. It never downloads or installs anything until you choose to.</p>
+        <p class="hint">WeightMaxxer checks for a new version when it starts, every five minutes while its window is open, and when you come back to it. It never downloads or installs anything until you choose to.</p>
       </div>
       <div class="card">
         <h2>Your data</h2>
-        <p class="hint desktop-only">Your plan and weigh-ins are saved automatically on this computer. Updating Weightmaxer keeps them.</p>
+        <p class="hint desktop-only">Your plan and weigh-ins are saved automatically on this computer. Updating WeightMaxxer keeps them.</p>
         <p class="hint web-only" hidden>Your plan and weigh-ins are saved automatically in this browser on this device. Clearing your browser's site data erases them, so export a copy now and then. Nothing is sent to a server.</p>
         <div class="kv"><span>Saved in</span><span id="set-folder" class="mono wrap"></span></div>
         <div class="actions desktop-only"><button type="button" class="btn" id="open-folder">Open folder</button></div>

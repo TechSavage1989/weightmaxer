@@ -1,6 +1,6 @@
 //go:build windows
 
-// Package host runs the Weightmaxer window: a WebView2 control showing the
+// Package host runs the WeightMaxxer window: a WebView2 control showing the
 // embedded web page, bindings for saving data, and the update flow.
 package host
 
@@ -46,7 +46,7 @@ var (
 	procShowWindow          = user32.NewProc("ShowWindow")
 )
 
-const windowTitle = "Weightmaxer"
+const windowTitle = "WeightMaxxer"
 
 // notice is a one-off message shown in the banner (update finished or rolled back).
 type notice struct {
@@ -107,12 +107,12 @@ func Run(opts Options) int {
 		err = dirs.Ensure()
 	}
 	if err != nil {
-		messageBox("Weightmaxer can't create its settings folder: " + err.Error())
+		messageBox("WeightMaxxer can't create its settings folder: " + err.Error())
 		return 1
 	}
 	closeLog := openLog(dirs.LogFile())
 	defer closeLog()
-	log.Printf("Weightmaxer %s starting [%s] (%s)", version.Version, version.Identity, strings.Join(os.Args[1:], " "))
+	log.Printf("WeightMaxxer %s starting [%s] (%s)", version.Version, version.Identity, strings.Join(os.Args[1:], " "))
 
 	if !singleInstance() {
 		log.Print("another copy is running; bringing it to the front")
@@ -134,7 +134,7 @@ func Run(opts Options) int {
 		},
 	})
 	if a.w == nil {
-		messageBox("Weightmaxer needs the Microsoft Edge WebView2 Runtime, which is part of Windows 10 and 11 but is missing or damaged on this PC.\n\nInstall it from https://developer.microsoft.com/microsoft-edge/webview2/ and start Weightmaxer again.")
+		messageBox("WeightMaxxer needs the Microsoft Edge WebView2 Runtime, which is part of Windows 10 and 11 but is missing or damaged on this PC.\n\nInstall it from https://developer.microsoft.com/microsoft-edge/webview2/ and start WeightMaxxer again.")
 		return 1
 	}
 	a.hwnd = uintptr(a.w.Window())
@@ -264,14 +264,14 @@ func (a *app) cleanupAfterHelper(pendingPath string) {
 
 func (a *app) loadNotices() {
 	if a.opts.PostUpdate != "" {
-		a.st.Notice = &notice{OK: true, Title: "Weightmaxer was updated to " + version.Version + "."}
+		a.st.Notice = &notice{OK: true, Title: "WeightMaxxer was updated to " + version.Version + "."}
 	}
 	if a.opts.UpdateFailed != "" {
 		var out update.Outcome
 		if update.ReadJSON(a.opts.UpdateFailed, &out) == nil {
 			n := &notice{Title: "The update to " + out.To + " didn't finish.", Detail: out.Error + "."}
 			if out.RolledBack {
-				n.Detail += " Weightmaxer went back to version " + out.From + ", and your data is unchanged."
+				n.Detail += " WeightMaxxer went back to version " + out.From + ", and your data is unchanged."
 			}
 			a.st.Notice = n
 		}
@@ -375,7 +375,7 @@ func (a *app) install() error {
 		time.Sleep(50 * time.Millisecond) // let a save in progress finish
 	}
 	if a.store.Busy() {
-		return errors.New("Weightmaxer is still saving. Try again in a moment.")
+		return errors.New("WeightMaxxer is still saving. Try again in a moment.")
 	}
 	if err := update.CheckExecutable(staged, to); err != nil {
 		return err
@@ -469,7 +469,7 @@ func dpi() uint {
 	return uint(d)
 }
 
-// singleInstance returns false (after focusing the other window) if Weightmaxer is already open.
+// singleInstance returns false (after focusing the other window) if WeightMaxxer is already open.
 func singleInstance() bool {
 	name, _ := windows.UTF16PtrFromString(`Local\Weightmaxer-` + version.AppID)
 	h, err := windows.CreateMutex(nil, false, name)
@@ -477,10 +477,14 @@ func singleInstance() bool {
 		if h != 0 {
 			windows.CloseHandle(h)
 		}
-		title, _ := windows.UTF16PtrFromString(windowTitle)
-		if w, _, _ := procFindWindowW.Call(0, uintptr(unsafe.Pointer(title))); w != 0 {
-			procShowWindow.Call(w, 9) // SW_RESTORE
-			procSetForegroundWindow.Call(w)
+		// A previous release can still be open when the renamed app is launched.
+		for _, text := range []string{windowTitle, "Weightmaxer"} {
+			title, _ := windows.UTF16PtrFromString(text)
+			if w, _, _ := procFindWindowW.Call(0, uintptr(unsafe.Pointer(title))); w != 0 {
+				procShowWindow.Call(w, 9) // SW_RESTORE
+				procSetForegroundWindow.Call(w)
+				break
+			}
 		}
 		return false
 	}

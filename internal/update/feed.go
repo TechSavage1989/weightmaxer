@@ -40,7 +40,7 @@ type Asset struct {
 	Digest string `json:"digest"`
 }
 
-// Release is the part of GitHub's release JSON Weightmaxer uses.
+// Release is the part of GitHub's release JSON WeightMaxxer uses.
 type Release struct {
 	Tag        string  `json:"tag_name"`
 	Name       string  `json:"name"`
@@ -164,7 +164,7 @@ func (c *Client) Check(ctx context.Context) Result {
 		}
 		c.saveCache(cache{ETag: resp.Header.Get("ETag"), Body: body, Checked: now})
 	case resp.StatusCode == http.StatusNotFound:
-		res.Kind, res.Message = KindNoRelease, "No Weightmaxer release has been published yet."
+		res.Kind, res.Message = KindNoRelease, "No WeightMaxxer release has been published yet."
 		return res
 	case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden:
 		if res.PauseUntil.IsZero() && resp.StatusCode == http.StatusTooManyRequests {
@@ -184,7 +184,7 @@ func (c *Client) Check(ctx context.Context) Result {
 
 	var rel Release
 	if err := json.Unmarshal(body, &rel); err != nil {
-		res.Kind, res.Message = KindError, "GitHub sent release details Weightmaxer couldn't read."
+		res.Kind, res.Message = KindError, "GitHub sent release details WeightMaxxer couldn't read."
 		return res
 	}
 	if rel.Draft || rel.Prerelease {

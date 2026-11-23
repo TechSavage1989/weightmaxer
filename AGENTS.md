@@ -1,4 +1,4 @@
-# Weightmaxer: guide for contributors and AI tools
+# WeightMaxxer: guide for contributors and AI tools
 
 Read this file first, then `DEVELOPMENT_HANDOFF.md` and the shared standard in
 [`docs/REPOSITORY_STANDARDS.md`](docs/REPOSITORY_STANDARDS.md). `CLAUDE.md` imports
@@ -53,11 +53,15 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
 - `VERSION` holds `MAJOR.MINOR.PATCH`. A release needs `docs/releases/<VERSION>.md`
   with `- ` bullets (the app shows the first four as "What's new").
 - Merging to `main` runs CI; if all jobs pass and no release exists for `VERSION`,
-  the `publish` job creates `v<VERSION>` with `Weightmaxer-win-x64.zip` and
+  the `publish` job creates `v<VERSION>` with primary `WeightMaxxer-win-x64.zip`, compatible `Weightmaxer-win-x64.zip` and
   `SHA256SUMS.txt`, then downloads and verifies them. Existing releases are never
   replaced; bump `VERSION` for any new build.
 - Documentation-only or organization-only changes don't bump `VERSION`.
-- Release asset names, `Weightmaxer.exe` inside the zip, the identity marker
+- The original `Weightmaxer-win-x64.zip` with `Weightmaxer.exe` remains the installed
+  updater contract. Also publish `WeightMaxxer-win-x64.zip` with `WeightMaxxer.exe`
+  for new downloads; both executables are identical. Keep storage paths, the localStorage
+  key and repository/domain unchanged when updating visible branding.
+- Legacy release asset names, `Weightmaxer.exe` inside the compatibility zip, the identity marker
   format (`internal/version`) and the API path are an update contract with every
   installed copy. Changing them breaks updates for existing users.
 - Owner's standing instruction (2026-11-07): permission to merge and release is always
@@ -122,6 +126,16 @@ node tests/browser/screenshots.cjs                        # recapture docs/image
   inside the chart box and the plan value equal to the schedule (both tested).
 - The page scrolls as a whole. Don't add nested vertical scroll areas; the
   browser test fails on them.
+- Forecasts use the most recent valid weigh-in between the plan start and today,
+  selected by date. Never overwrite the original start weight/date or chosen goal.
+  Pace mode retains the pace; target-date mode retains the deadline. Goal attainment
+  uses the original direction so crossing a goal does not reverse the plan.
+- Calendar offsets use `daysBetween` (UTC calendar components), not elapsed local
+  milliseconds, so chart points and schedule dates stay aligned across daylight saving.
+  Forecast points are offset from the original plan start; chart readouts before the
+  latest weigh-in must not invent a forecast. Ahead/behind uses a separate original baseline.
+- Adding, replacing, deleting, importing and loading weigh-ins must recalculate the
+  plan and visible log together. Pre-plan/future entries stay in history only.
 - Screenshots use fictional data only and must be recaptured in the same pull
   request as a visible UI change.
 

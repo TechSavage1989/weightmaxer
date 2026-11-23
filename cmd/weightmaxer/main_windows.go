@@ -1,6 +1,6 @@
 //go:build windows
 
-// Command weightmaxer is the Weightmaxer desktop app for Windows.
+// Command weightmaxer is the WeightMaxxer desktop app for Windows.
 package main
 
 import (

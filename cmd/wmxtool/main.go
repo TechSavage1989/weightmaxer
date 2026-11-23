@@ -1,6 +1,7 @@
 // Command wmxtool checks release packages with the app's own update code.
 //
 //	go run ./cmd/wmxtool verify dist/Weightmaxer-win-x64.zip 1.0.0
+//	go run ./cmd/wmxtool verify-branded dist/WeightMaxxer-win-x64.zip 1.3.0
 //	go run ./cmd/wmxtool feedcheck [--expect 1.0.0]
 //
 // feedcheck runs the production update path against the live GitHub release
@@ -23,17 +24,21 @@ func main() {
 		usage()
 	}
 	switch os.Args[1] {
-	case "verify":
+	case "verify", "verify-branded":
 		if len(os.Args) != 4 {
 			usage()
 		}
 		dir, err := os.MkdirTemp("", "wmx-verify-")
 		check(err)
 		defer os.RemoveAll(dir)
-		exe, err := update.ExtractExe(os.Args[2], os.Args[3], dir)
+		extract := update.ExtractExe
+		if os.Args[1] == "verify-branded" {
+			extract = update.ExtractBrandedExe
+		}
+		exe, err := extract(os.Args[2], os.Args[3], dir)
 		check(err)
 		fi, _ := os.Stat(exe)
-		fmt.Printf("ok: %s contains Weightmaxer %s (%d bytes)\n", filepath.Base(os.Args[2]), os.Args[3], fi.Size())
+		fmt.Printf("ok: %s contains WeightMaxxer %s (%d bytes)\n", filepath.Base(os.Args[2]), os.Args[3], fi.Size())
 	case "feedcheck":
 		fs := flag.NewFlagSet("feedcheck", flag.ExitOnError)
 		expect := fs.String("expect", "", "version the latest release must have")
@@ -62,7 +67,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: wmxtool verify <zip> <version> | wmxtool feedcheck [--expect VERSION]")
+	fmt.Fprintln(os.Stderr, "usage: wmxtool verify <zip> <version> | wmxtool verify-branded <zip> <version> | wmxtool feedcheck [--expect VERSION]")
 	os.Exit(2)
 }
 

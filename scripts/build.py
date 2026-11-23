@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build Weightmaxer.exe for 64-bit Windows and package the release downloads.
+"""Build WeightMaxxer for 64-bit Windows and package both release downloads.
 
-    python3 scripts/build.py                 # dist/Weightmaxer.exe, zip, SHA256SUMS.txt
+    python3 scripts/build.py                 # dist/ executables, both zips, SHA256SUMS.txt
     python3 scripts/build.py --version 0.9.0 --tags updatetest --out build/e2e/old --no-package
 
 Works on Linux, macOS and Windows (Go cross-compiles; no C compiler is needed)
@@ -22,9 +22,12 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULE = "github.com/TechSavage1989/weightmaxer"
 APP_ID = "com.techsavage1989.weightmaxer"
 ZIP_NAME = "Weightmaxer-win-x64.zip"
+BRANDED_ZIP_NAME = "WeightMaxxer-win-x64.zip"
+EXE_NAME = "Weightmaxer.exe"
+BRANDED_EXE_NAME = "WeightMaxxer.exe"
 SUMS_NAME = "SHA256SUMS.txt"
-ZIP_FILES = [("Weightmaxer.exe", None), ("README.txt", ROOT / "assets" / "README.txt"),
-             ("THIRD_PARTY_NOTICES.txt", ROOT / "assets" / "THIRD_PARTY_NOTICES.txt")]
+ZIP_DOCUMENTS = [("README.txt", ROOT / "assets" / "README.txt"),
+                 ("THIRD_PARTY_NOTICES.txt", ROOT / "assets" / "THIRD_PARTY_NOTICES.txt")]
 FIXED_TIME = (2020, 1, 1, 0, 0, 0)  # stable zip timestamps
 
 
@@ -54,7 +57,7 @@ def resources(version, work):
 
 def build(version, tags, out):
     out.mkdir(parents=True, exist_ok=True)
-    exe = out / "Weightmaxer.exe"
+    exe = out / BRANDED_EXE_NAME
     ldflags = (f"-s -w -H windowsgui -X {MODULE}/internal/version.Version={version} "
                f"-X '{MODULE}/internal/version.Identity=WMXID|{APP_ID}|{version}|END'")
     env = dict(os.environ, GOOS="windows", GOARCH="amd64", CGO_ENABLED="0")
@@ -66,22 +69,31 @@ def build(version, tags, out):
     marker = f"WMXID|{APP_ID}|{version}|END".encode()
     if marker not in data:
         sys.exit("the built executable is missing its identity marker")
+    # Old installed copies and the Windows update test use the original name.
+    # Both names contain the identical build and continue using the same data.
+    shutil.copyfile(exe, out / EXE_NAME)
     return exe
 
 
 def package(exe, version, out):
-    zpath = out / ZIP_NAME
-    with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-        for name, src in ZIP_FILES:
-            info = zipfile.ZipInfo(name, FIXED_TIME)
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = 0o644 << 16
-            z.writestr(info, (src or exe).read_bytes())
-    digest = hashlib.sha256(zpath.read_bytes()).hexdigest()
-    (out / SUMS_NAME).write_text(f"{digest}  {ZIP_NAME}\n", encoding="utf-8", newline="\n")
-    # Check the package with the same code the app uses before installing an update.
-    run(["go", "run", "./cmd/wmxtool", "verify", str(zpath), version])
-    print(f"{ZIP_NAME}  sha256 {digest}")
+    sums = []
+    for zip_name, exe_name, verifier in [
+        (BRANDED_ZIP_NAME, BRANDED_EXE_NAME, "verify-branded"),
+        (ZIP_NAME, EXE_NAME, "verify"),
+    ]:
+        zpath = out / zip_name
+        with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+            for name, src in [(exe_name, exe), *ZIP_DOCUMENTS]:
+                info = zipfile.ZipInfo(name, FIXED_TIME)
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = 0o644 << 16
+                z.writestr(info, src.read_bytes())
+        digest = hashlib.sha256(zpath.read_bytes()).hexdigest()
+        sums.append(f"{digest}  {zip_name}\n")
+        # Each verifier accepts only that package's one exact executable name.
+        run(["go", "run", "./cmd/wmxtool", verifier, str(zpath), version])
+        print(f"{zip_name}  sha256 {digest}")
+    (out / SUMS_NAME).write_text("".join(sums), encoding="utf-8", newline="\n")
 
 
 def main():
