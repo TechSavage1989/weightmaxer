@@ -195,7 +195,11 @@ jobs:
             case "$branch" in feat/*|fix/*|docs/*|chore/*|release/*) ;; *) continue ;; esac
             if current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" --jq '.object.sha'); then
               if [ "$current" = "$merged_head" ]; then
-                gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch"
+                # Delete only the already-merged head. The lease is checked by
+                # the Git server, so a concurrent push keeps the branch intact.
+                if ! git push --force-with-lease="refs/heads/$branch:$merged_head" origin ":refs/heads/$branch"; then
+                  echo "Kept $branch because its head changed or deletion was unavailable."
+                fi
               fi
             fi
           done < merged-branches.tsv
